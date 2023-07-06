@@ -1,31 +1,14 @@
 package main
 
 import (
-	"net/http"
+	"fmt"
+	"hermetic/cmd"
 	"os"
-
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 )
 
 func main() {
-	e := echo.New()
-
-	e.Use(middleware.Logger())
-	e.Use(middleware.Recover())
-
-	e.GET("/", func(c echo.Context) error {
-		return c.HTML(http.StatusOK, "Hello from server")
-	})
-
-	e.GET("/health", func(c echo.Context) error {
-		return c.JSON(http.StatusOK, struct{ Status string }{Status: "OK"})
-	})
-
-	httpPort := os.Getenv("PORT")
-	if httpPort == "" {
-		httpPort = "8080"
+	if err := cmd.NewRootCommand().Execute(); err != nil {
+		fmt.Printf("failed to execute command, got error: '%s'\n", err)
+		os.Exit(1)
 	}
-
-	e.Logger.Fatal(e.Start(":" + httpPort))
 }
