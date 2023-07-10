@@ -11,7 +11,7 @@ COPY . .
 
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /ping-server
 
-FROM golang:1.20 AS run-stage
+FROM gcr.io/distroless/base-debian11 AS run-stage
 
 WORKDIR /run
 
