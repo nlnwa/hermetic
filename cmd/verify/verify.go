@@ -2,6 +2,8 @@ package verify
 
 import (
 	"fmt"
+	"hermetic/internal/common_flags"
+	verifyImplementation "hermetic/internal/verify"
 
 	"github.com/spf13/cobra"
 )
@@ -24,11 +26,9 @@ func NewCommand() *cobra.Command {
 }
 
 func parseArgumentsAndCallVerify(cmd *cobra.Command, args []string) error {
-	fmt.Println("Parsing verify arguments")
-	return verify()
-}
-
-func verify() error {
-	fmt.Println("Running verify")
-	return nil
+	rejectTopicName, err := cmd.Flags().GetString("reject-topic")
+	if err != nil {
+		return fmt.Errorf("failed to get reject-topic flag, cause: `%w`", err)
+	}
+	return verifyImplementation.Verify(rejectTopicName, common_flags.KafkaEndpoints, common_flags.TeamsWebhookNotificationUrl)
 }
