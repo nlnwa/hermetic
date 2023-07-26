@@ -9,14 +9,12 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /ping-server
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /hermetic
 
 FROM gcr.io/distroless/base-debian11 AS run-stage
 
 WORKDIR /run
 
-COPY --from=build-stage /ping-server .
+COPY --from=build-stage /hermetic .
 
-EXPOSE 8080
-
-CMD ["/run/ping-server"]
+CMD ["./hermetic"]
