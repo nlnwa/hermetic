@@ -1,6 +1,11 @@
-FROM golang:1.20 AS build-stage
+FROM docker.io/golang:1.20 AS build-stage
 
 WORKDIR /build
+
+ARG HTTP_PROXY
+
+ENV http_proxy=${HTTP_PROXY}
+ENV https_proxy=${HTTP_PROXY}
 
 COPY go.mod .
 COPY go.sum .

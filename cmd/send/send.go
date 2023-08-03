@@ -69,22 +69,10 @@ func parseArgumentsAndCallSend(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("getting stage artifacts root failed, original error: '%w'", stageArtifactsRootError)
 	}
 
-	return send(kafkaEndpoints, transferTopicName, stageArtifactsRoot)
+	return prepareAndSendSubmissionInformationPackage(kafkaEndpoints, transferTopicName, stageArtifactsRoot)
 }
 
-func createSubmissionInformationPackage(payloadPath string, payloadDirName string) TransferSubmissionInformationPackage {
-	date := time.Now().UTC().Format("2006-01-02T15:04:05.000")
-	contentCategory := "nettarkiv"
-	contentType := "warc"
-	identifier := "no-nb_" + contentCategory + "_" + payloadDirName
-	urn := "URN:NBN:" + identifier
-	destinationPath := payloadPath
-
-	submissionInformationPackage := TransferSubmissionInformationPackage{date, contentCategory, contentType, identifier, urn, destinationPath}
-	return submissionInformationPackage
-}
-
-func send(kafkaEndpoints []string, transferTopicName string, rootPath string) error {
+func prepareAndSendSubmissionInformationPackage(kafkaEndpoints []string, transferTopicName string, rootPath string) error {
 	items, readRootError := os.ReadDir(rootPath)
 	if readRootError != nil {
 		return fmt.Errorf("failed to read root path '%s', original error: '%w'", rootPath, readRootError)
@@ -111,6 +99,18 @@ func send(kafkaEndpoints []string, transferTopicName string, rootPath string) er
 	}
 
 	return nil
+}
+
+func createSubmissionInformationPackage(payloadPath string, payloadDirName string) TransferSubmissionInformationPackage {
+	date := time.Now().UTC().Format("2006-01-02T15:04:05.000")
+	contentCategory := "nettarkiv"
+	contentType := "warc"
+	identifier := "no-nb_" + contentCategory + "_" + payloadDirName
+	urn := "URN:NBN:" + identifier
+	destinationPath := payloadPath
+
+	submissionInformationPackage := TransferSubmissionInformationPackage{date, contentCategory, contentType, identifier, urn, destinationPath}
+	return submissionInformationPackage
 }
 
 func sendMessageToKafkaTopic(kafkaEndpoints []string, payload []byte, transferTopicName string) error {
