@@ -125,7 +125,7 @@ func sendMessageToKafkaTopic(kafkaEndpoints []string, payload []byte, transferTo
 
 	writeMessageError := writer.WriteMessages(context.Background(),
 		kafka.Message{
-			Key:   kafkaMessageUuid[:],
+			Key:   []byte(kafkaMessageUuid.String()),
 			Value: payload,
 		},
 	)
