@@ -96,6 +96,7 @@ func prepareAndSendSubmissionInformationPackage(kafkaEndpoints []string, transfe
 		} else {
 			return fmt.Errorf("found file '%s' in root path '%s', but expected only directories", path.Name(), rootPath)
 		}
+		break // TODO remove later
 	}
 
 	return nil
