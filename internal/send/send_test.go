@@ -53,3 +53,33 @@ func TestCreateSubmissionInformationPackage(t *testing.T) {
 		t.Errorf("Expected %s to be before %s", date, expectedDate)
 	}
 }
+
+func TestWebArchiveRelevantMessages(t *testing.T) {
+	nettarkivetMessage := TransferSubmissionInformationPackage{
+		Date:            time.Now().UTC().Format("2006-01-02T15:04:05.000"),
+		ContentCategory: "nettarkiv",
+		ContentType:     "warc",
+		Identifier:      "not-important",
+		Urn:             "not-important",
+		Path:            "not-important",
+	}
+	otherMessage := TransferSubmissionInformationPackage{
+		Date:            time.Now().UTC().Format("2006-01-02T15:04:05.000"),
+		ContentCategory: "other",
+		ContentType:     "other",
+		Identifier:      "other",
+		Urn:             "other",
+		Path:            "other",
+	}
+	messages := []TransferSubmissionInformationPackage{nettarkivetMessage, otherMessage}
+	filteredResults, err := webArchiveRelevantMessages(messages)
+	if err != nil {
+		t.Errorf("Expected no error, got '%s'", err)
+	}
+	if len(filteredResults) != 1 {
+		t.Errorf("Expected 1 message, got %d", len(filteredResults))
+	}
+	if filteredResults[0] != nettarkivetMessage {
+		t.Errorf("Expected '%+v', got '%s'", nettarkivetMessage, filteredResults[0])
+	}
+}
