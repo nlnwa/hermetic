@@ -2,8 +2,15 @@ package send
 
 import (
 	"fmt"
+	"hermetic/internal/common_flags"
+	sendImplementation "hermetic/internal/send"
 
 	"github.com/spf13/cobra"
+)
+
+const (
+	transferTopicFlagName      string = "transfer-topic"
+	stageArtifactsRootFlagName string = "stage-artifacts-root"
 )
 
 func NewCommand() *cobra.Command {
@@ -13,14 +20,12 @@ func NewCommand() *cobra.Command {
 		Args:  cobra.NoArgs,
 		RunE:  parseArgumentsAndCallSend,
 	}
-	transferTopicFlagName := "transfer-topic"
 	command.Flags().String(transferTopicFlagName, "", "name of transfer-topic")
 	if markTransferRequiredError := command.MarkFlagRequired(transferTopicFlagName); markTransferRequiredError != nil {
 		panic(fmt.Sprintf("failed to mark flag %s as required, original error: '%s'", transferTopicFlagName, markTransferRequiredError))
 	}
 
-	rootPathFlagName := "stage-artifacts-root"
-	command.Flags().String(rootPathFlagName, "", `path to the root directory with the following content structure:
+	command.Flags().String(stageArtifactsRootFlagName, "", `path to the root directory with the following content structure:
 /stage-artifacts-root
 ├── /kommuner_2023-20230611002729-0035-veidemann-contentwriter-568c6f8545-frvcm
 │   ├── /kommuner_2023-20230611002729-0035-veidemann-contentwriter-568c6f8545-frvcm.warc.gz
@@ -29,19 +34,22 @@ func NewCommand() *cobra.Command {
     ├── /kommuner_2023-20230611002730-0036-veidemann-contentwriter-568c6f8545-frvcm.warc.gz
     └── /checksum_transferred.md5
 ... etc`)
-	if markRootPathRequiredError := command.MarkFlagRequired(rootPathFlagName); markRootPathRequiredError != nil {
-		panic(fmt.Sprintf("failed to mark flag %s as required, original error: '%s'", rootPathFlagName, markRootPathRequiredError))
+	if err := command.MarkFlagRequired(stageArtifactsRootFlagName); err != nil {
+		panic(fmt.Sprintf("failed to mark flag %s as required, original error: '%s'", stageArtifactsRootFlagName, err))
 	}
 
 	return command
 }
 
 func parseArgumentsAndCallSend(cmd *cobra.Command, args []string) error {
-	fmt.Println("Parsing send arguments")
-	return send()
-}
+	transferTopicName, err := cmd.Flags().GetString(transferTopicFlagName)
+	if err != nil {
+		return fmt.Errorf("getting transfer topic name failed, original error: '%w'", err)
+	}
+	stageArtifactsRoot, err := cmd.Flags().GetString("stage-artifacts-root")
+	if err != nil {
+		return fmt.Errorf("getting stage artifacts root failed, original error: '%w'", err)
+	}
 
-func send() error {
-	fmt.Println("Running send")
-	return nil
+	return sendImplementation.PrepareAndSendSubmissionInformationPackage(common_flags.KafkaEndpoints, transferTopicName, stageArtifactsRoot)
 }
