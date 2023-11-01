@@ -191,27 +191,26 @@ func PrepareAndSendSubmissionInformationPackage(kafkaEndpoints []string, transfe
 					return fmt.Errorf("failed to get '%s' from cache, original error: '%w'", destinationPath, err)
 				}
 			}
-			if path.IsDir() {
-
-				fmt.Printf("Processing directory %s\n", destinationPath)
-				transferSubmissionInformationPackage := createSubmissionInformationPackage(destinationPath, directoryName)
-
-				kafkaMessage, err := json.Marshal(transferSubmissionInformationPackage)
-				if err != nil {
-					return fmt.Errorf("failed to marshal json, original error: '%w'", err)
-				}
-
-				err = sender.sendMessageToKafkaTopic(kafkaMessage)
-				if err != nil {
-					return fmt.Errorf("failed to send message to kafka topic '%s', original error: '%w'", transferTopicName, err)
-				}
-				err = cache.Set(destinationPath, []byte("Sent"))
-				if err != nil {
-					return fmt.Errorf("failed to set '%s' in cache, original error: '%w'", destinationPath, err)
-				}
-			} else {
+			if !path.IsDir() {
 				return fmt.Errorf("found file '%s' in root path '%s', but expected only directories", path.Name(), rootPath)
 			}
+			fmt.Printf("Processing directory %s\n", destinationPath)
+			transferSubmissionInformationPackage := createSubmissionInformationPackage(destinationPath, directoryName)
+
+			kafkaMessage, err := json.Marshal(transferSubmissionInformationPackage)
+			if err != nil {
+				return fmt.Errorf("failed to marshal json, original error: '%w'", err)
+			}
+
+			err = sender.sendMessageToKafkaTopic(kafkaMessage)
+			if err != nil {
+				return fmt.Errorf("failed to send message to kafka topic '%s', original error: '%w'", transferTopicName, err)
+			}
+			err = cache.Set(destinationPath, []byte("Sent"))
+			if err != nil {
+				return fmt.Errorf("failed to set '%s' in cache, original error: '%w'", destinationPath, err)
+			}
+
 		}
 		time.Sleep(1 * time.Minute)
 	}
