@@ -9,8 +9,9 @@ import (
 	"os"
 	"time"
 
+	kafkaHelpers "hermetic/internal/kafka"
+
 	"github.com/allegro/bigcache/v3"
-	"github.com/google/uuid"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -21,14 +22,6 @@ type TransferSubmissionInformationPackage struct {
 	Identifier      string `json:"identifier"`
 	Urn             string `json:"urn"`
 	Path            string `json:"path"`
-}
-
-type sender struct {
-	writer *kafka.Writer
-}
-
-type messageReader struct {
-	reader *kafka.Reader
 }
 
 type offsets struct {
@@ -62,21 +55,15 @@ func getFirstAndLastOffsets(kafkaEndpoints []string, transferTopicName string) (
 	return offsets{first: firstOffset, last: lastOffset}, nil
 }
 
-func (reader *messageReader) readMessageWithTimeout(timeout time.Duration) (message kafka.Message, err error) {
-	ctxTimeout, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-	return reader.reader.ReadMessage(ctxTimeout)
-}
-
 func readLatestMessages(kafkaEndpoints []string, transferTopicName string) ([]TransferSubmissionInformationPackage, error) {
-	messageReader := messageReader{
-		reader: kafka.NewReader(kafka.ReaderConfig{
+	messageReader := kafkaHelpers.MessageReader{
+		Reader: kafka.NewReader(kafka.ReaderConfig{
 			Brokers: kafkaEndpoints,
 			Topic:   transferTopicName,
 		}),
 	}
 
-	defer messageReader.reader.Close()
+	defer messageReader.Reader.Close()
 
 	offsets, err := getFirstAndLastOffsets(kafkaEndpoints, transferTopicName)
 	if err != nil {
@@ -88,12 +75,12 @@ func readLatestMessages(kafkaEndpoints []string, transferTopicName string) ([]Tr
 
 	for offsetToReadFrom := offsets.first; offsetToReadFrom < offsets.last; offsetToReadFrom++ {
 		fmt.Printf("Reading message at offset '%d'\n", offsetToReadFrom)
-		err := messageReader.reader.SetOffset(offsetToReadFrom)
+		err := messageReader.Reader.SetOffset(offsetToReadFrom)
 		if err != nil {
 			return nil, fmt.Errorf("failed to set offset '%d', original error: '%w'", offsetToReadFrom, err)
 		}
 
-		message, err := messageReader.readMessageWithTimeout(readTimeout)
+		message, err := messageReader.ReadMessageWithTimeout(readTimeout)
 		if errors.Is(err, context.DeadlineExceeded) {
 			fmt.Printf("Could not read message at offset '%d', read timeout '%s' exceeded, skipping offset\n", offsetToReadFrom, readTimeout)
 			continue
@@ -137,15 +124,15 @@ func webArchiveRelevantMessages(messages []TransferSubmissionInformationPackage)
 }
 
 func PrepareAndSendSubmissionInformationPackage(kafkaEndpoints []string, transferTopicName string, rootPath string) error {
-	sender := sender{
-		writer: &kafka.Writer{
+	sender := kafkaHelpers.Sender{
+		Writer: &kafka.Writer{
 			Addr:     kafka.TCP(kafkaEndpoints...),
 			Topic:    transferTopicName,
 			Balancer: &kafka.LeastBytes{},
 		},
 	}
 
-	defer sender.writer.Close()
+	defer sender.Writer.Close()
 
 	latestMessages, err := readLatestMessages(kafkaEndpoints, transferTopicName)
 	if err != nil {
@@ -202,7 +189,7 @@ func PrepareAndSendSubmissionInformationPackage(kafkaEndpoints []string, transfe
 				return fmt.Errorf("failed to marshal json, original error: '%w'", err)
 			}
 
-			err = sender.sendMessageToKafkaTopic(kafkaMessage)
+			err = sender.SendMessageToKafkaTopic(kafkaMessage)
 			if err != nil {
 				return fmt.Errorf("failed to send message to kafka topic '%s', original error: '%w'", transferTopicName, err)
 			}
@@ -231,25 +218,4 @@ func createSubmissionInformationPackage(payloadPath string, payloadDirName strin
 		Urn:             urn,
 		Path:            payloadPath,
 	}
-}
-
-func (sender *sender) sendMessageToKafkaTopic(payload []byte) error {
-	kafkaMessageUuid := uuid.New()
-	fmt.Printf("Sending message with uuid %s\n", kafkaMessageUuid)
-	kafkaMessageUuidBytes, err := kafkaMessageUuid.MarshalText()
-	if err != nil {
-		return fmt.Errorf("failed to marshal uuid, original error: '%w'", err)
-	}
-
-	err = sender.writer.WriteMessages(context.Background(),
-		kafka.Message{
-			Key:   kafkaMessageUuidBytes,
-			Value: payload,
-		},
-	)
-	if err != nil {
-		return fmt.Errorf("failed to write messages, original error: '%w'", err)
-	}
-
-	return nil
 }
