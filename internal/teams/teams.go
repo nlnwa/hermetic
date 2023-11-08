@@ -47,3 +47,26 @@ func SendMessage(payload Message, webhookUrl string) error {
 	}
 	return nil
 }
+
+func CreateGeneralFailureMessage(failure error) Message {
+	facts := []Fact{
+		{
+			Name:  "Error",
+			Value: failure.Error(),
+		},
+	}
+	return Message{
+		Type:       "MessageCard",
+		Context:    "http://schema.org/extensions",
+		ThemeColor: "0076D7",
+		Summary:    "System error",
+		Sections: []Section{
+			{
+				ActivityTitle:    "System error",
+				ActivitySubtitle: "A Digital Preservation System (DPS) general failure",
+				ActivityImage:    "https://www.dictionary.com/e/wp-content/uploads/2018/03/thisisfine-1-300x300.jpg",
+				Facts:            facts,
+			},
+		},
+	}
+}
