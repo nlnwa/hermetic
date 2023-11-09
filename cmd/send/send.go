@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"hermetic/internal/common_flags"
 	sendImplementation "hermetic/internal/send"
+	"hermetic/internal/teams"
 
 	"github.com/spf13/cobra"
 )
@@ -51,5 +52,16 @@ func parseArgumentsAndCallSend(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("getting stage artifacts root failed, original error: '%w'", err)
 	}
 
-	return sendImplementation.PrepareAndSendSubmissionInformationPackage(common_flags.KafkaEndpoints, transferTopicName, stageArtifactsRoot)
+	err = sendImplementation.PrepareAndSendSubmissionInformationPackage(common_flags.KafkaEndpoints, transferTopicName, stageArtifactsRoot)
+	if err != nil {
+		err = fmt.Errorf("transfer error, cause: `%w`", err)
+		fmt.Printf("Sending error message to Teams\n")
+		teamsErrorMessage := teams.CreateGeneralFailureMessage(err)
+		if err := teams.SendMessage(teamsErrorMessage, common_flags.TeamsWebhookNotificationUrl); err != nil {
+			err = fmt.Errorf("failed to send error message to Teams, cause: `%w`", err)
+			fmt.Printf("%s\n", err)
+		}
+		return err
+	}
+	return err
 }

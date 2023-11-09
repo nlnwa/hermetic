@@ -3,6 +3,7 @@ package verify
 import (
 	"fmt"
 	"hermetic/internal/common_flags"
+	"hermetic/internal/teams"
 	verifyImplementation "hermetic/internal/verify"
 
 	"github.com/spf13/cobra"
@@ -30,5 +31,17 @@ func parseArgumentsAndCallVerify(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to get reject-topic flag, cause: `%w`", err)
 	}
-	return verifyImplementation.Verify(rejectTopicName, common_flags.KafkaEndpoints, common_flags.TeamsWebhookNotificationUrl)
+
+	err = verifyImplementation.Verify(rejectTopicName, common_flags.KafkaEndpoints, common_flags.TeamsWebhookNotificationUrl)
+	if err != nil {
+		err = fmt.Errorf("verification error, cause: `%w`", err)
+		fmt.Printf("Sending error message to Teams\n")
+		teamsErrorMessage := teams.CreateGeneralFailureMessage(err)
+		if err := teams.SendMessage(teamsErrorMessage, common_flags.TeamsWebhookNotificationUrl); err != nil {
+			err = fmt.Errorf("failed to send error message to Teams, cause: `%w`", err)
+			fmt.Printf("%s\n", err)
+		}
+		return err
+	}
+	return err
 }
