@@ -12,6 +12,7 @@ import (
 	kafkaHelpers "hermetic/internal/kafka"
 
 	"github.com/allegro/bigcache/v3"
+	"github.com/google/uuid"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -207,8 +208,9 @@ func createSubmissionInformationPackage(payloadPath string, payloadDirName strin
 	date := time.Now().UTC().Format("2006-01-02T15:04:05.000")
 	contentCategory := "nettarkiv"
 	contentType := "warc"
-	identifier := "no-nb_" + contentCategory + "_" + payloadDirName
-	urn := "URN:NBN:" + identifier
+	commonPart := "no-nb_" + contentCategory + "_" + payloadDirName
+	identifier := commonPart + "_" + uuid.New().String()
+	urn := "URN:NBN:" + commonPart
 
 	return TransferSubmissionInformationPackage{
 		Date:            date,
