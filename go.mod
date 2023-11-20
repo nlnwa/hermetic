@@ -7,7 +7,7 @@ require (
 	github.com/carlmjohnson/requests v0.23.5
 	github.com/google/go-cmp v0.6.0
 	github.com/google/uuid v1.4.0
-	github.com/segmentio/kafka-go v0.4.44
+	github.com/segmentio/kafka-go v0.4.45
 	github.com/spf13/cobra v1.8.0
 )
 
