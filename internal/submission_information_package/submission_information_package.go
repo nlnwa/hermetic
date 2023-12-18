@@ -15,10 +15,9 @@ type Package struct {
 	Path            string `json:"path"`
 }
 
-func CreatePackage(payloadPath string, payloadDirName string) Package {
+func CreatePackage(payloadPath string, payloadDirName string, contentType string) Package {
 	date := time.Now().UTC().Format("2006-01-02T15:04:05.000")
 	contentCategory := "nettarkiv"
-	contentType := "warc"
 	commonPart := "no-nb_" + contentCategory + "_" + payloadDirName
 	identifier := commonPart + "_" + uuid.New().String()
 	urn := "URN:NBN:" + commonPart
