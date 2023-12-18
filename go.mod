@@ -6,7 +6,7 @@ require (
 	github.com/allegro/bigcache/v3 v3.1.0
 	github.com/carlmjohnson/requests v0.23.5
 	github.com/google/go-cmp v0.6.0
-	github.com/google/uuid v1.4.0
+	github.com/google/uuid v1.5.0
 	github.com/segmentio/kafka-go v0.4.46
 	github.com/spf13/cobra v1.8.0
 )
