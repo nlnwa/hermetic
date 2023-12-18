@@ -10,25 +10,20 @@ import (
 	"time"
 
 	kafkaHelpers "hermetic/internal/kafka"
+	"hermetic/internal/submission_information_package"
 
 	"github.com/allegro/bigcache/v3"
-	"github.com/google/uuid"
 	"github.com/segmentio/kafka-go"
 )
-
-type TransferSubmissionInformationPackage struct {
-	Date            string `json:"date"`
-	ContentCategory string `json:"contentCategory"`
-	ContentType     string `json:"contentType"`
-	Identifier      string `json:"identifier"`
-	Urn             string `json:"urn"`
-	Path            string `json:"path"`
-}
 
 type offsets struct {
 	first int64
 	last  int64
 }
+
+const (
+	contentType = "warc"
+)
 
 func getFirstAndLastOffsets(kafkaEndpoints []string, transferTopicName string) (offsets, error) {
 	conn, err := net.Dial("tcp", kafkaEndpoints[0])
@@ -56,7 +51,7 @@ func getFirstAndLastOffsets(kafkaEndpoints []string, transferTopicName string) (
 	return offsets{first: firstOffset, last: lastOffset}, nil
 }
 
-func readLatestMessages(kafkaEndpoints []string, transferTopicName string) ([]TransferSubmissionInformationPackage, error) {
+func readLatestMessages(kafkaEndpoints []string, transferTopicName string) ([]submission_information_package.Package, error) {
 	messageReader := kafkaHelpers.MessageReader{
 		Reader: kafka.NewReader(kafka.ReaderConfig{
 			Brokers: kafkaEndpoints,
@@ -72,7 +67,7 @@ func readLatestMessages(kafkaEndpoints []string, transferTopicName string) ([]Tr
 	}
 	readTimeout := 10 * time.Second
 
-	var messages []TransferSubmissionInformationPackage
+	var messages []submission_information_package.Package
 
 	for offsetToReadFrom := offsets.first; offsetToReadFrom < offsets.last; offsetToReadFrom++ {
 		fmt.Printf("Reading message at offset '%d'\n", offsetToReadFrom)
@@ -93,9 +88,9 @@ func readLatestMessages(kafkaEndpoints []string, transferTopicName string) ([]Tr
 			fmt.Printf("Message at offset '%d' is nil, skipping offset\n", offsetToReadFrom)
 			continue
 		}
-		var transferSubmissionInformationPackage TransferSubmissionInformationPackage
+		var submissionInformationPackage submission_information_package.Package
 
-		err = json.Unmarshal(message.Value, &transferSubmissionInformationPackage)
+		err = json.Unmarshal(message.Value, &submissionInformationPackage)
 		if err != nil {
 			syntaxError := new(json.SyntaxError)
 			if errors.As(err, &syntaxError) {
@@ -104,19 +99,19 @@ func readLatestMessages(kafkaEndpoints []string, transferTopicName string) ([]Tr
 			}
 			return nil, fmt.Errorf("failed to unmarshal json, original error: '%w'", err)
 		}
-		messages = append(messages, transferSubmissionInformationPackage)
+		messages = append(messages, submissionInformationPackage)
 
 	}
 
 	return messages, nil
 }
 
-func webArchiveRelevantMessages(messages []TransferSubmissionInformationPackage) ([]TransferSubmissionInformationPackage, error) {
-	var relevantMessages []TransferSubmissionInformationPackage
+func webArchiveRelevantMessages(messages []submission_information_package.Package) ([]submission_information_package.Package, error) {
+	var relevantMessages []submission_information_package.Package
 	for _, message := range messages {
 		if message.ContentCategory == "nettarkiv" {
-			if message.ContentType != "warc" {
-				return nil, fmt.Errorf("found content type '%s' in message '%+v', expected 'warc'", message.ContentType, message)
+			if message.ContentType != contentType {
+				return nil, fmt.Errorf("found content type '%s' in message '%+v', expected '%s'", message.ContentType, message, contentType)
 			}
 			relevantMessages = append(relevantMessages, message)
 		}
@@ -183,9 +178,9 @@ func PrepareAndSendSubmissionInformationPackage(kafkaEndpoints []string, transfe
 				return fmt.Errorf("found file '%s' in root path '%s', but expected only directories", path.Name(), rootPath)
 			}
 			fmt.Printf("Processing directory %s\n", destinationPath)
-			transferSubmissionInformationPackage := createSubmissionInformationPackage(destinationPath, directoryName)
+			submissionInformationPackage := submission_information_package.CreatePackage(destinationPath, directoryName, contentType)
 
-			kafkaMessage, err := json.Marshal(transferSubmissionInformationPackage)
+			kafkaMessage, err := json.Marshal(submissionInformationPackage)
 			if err != nil {
 				return fmt.Errorf("failed to marshal json, original error: '%w'", err)
 			}
@@ -201,23 +196,5 @@ func PrepareAndSendSubmissionInformationPackage(kafkaEndpoints []string, transfe
 
 		}
 		time.Sleep(1 * time.Minute)
-	}
-}
-
-func createSubmissionInformationPackage(payloadPath string, payloadDirName string) TransferSubmissionInformationPackage {
-	date := time.Now().UTC().Format("2006-01-02T15:04:05.000")
-	contentCategory := "nettarkiv"
-	contentType := "warc"
-	commonPart := "no-nb_" + contentCategory + "_" + payloadDirName
-	identifier := commonPart + "_" + uuid.New().String()
-	urn := "URN:NBN:" + commonPart
-
-	return TransferSubmissionInformationPackage{
-		Date:            date,
-		ContentCategory: contentCategory,
-		ContentType:     contentType,
-		Identifier:      identifier,
-		Urn:             urn,
-		Path:            payloadPath,
 	}
 }
