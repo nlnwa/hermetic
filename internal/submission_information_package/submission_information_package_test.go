@@ -6,9 +6,9 @@ import (
 	"time"
 )
 
-func TestCreateSubmissionInformationPackage(t *testing.T) {
+func TestCreatePackage(t *testing.T) {
 	dateFormat := "2006-01-02T15:04:05.000"
-	expectedSubmissionInformationPackage := SubmissionInformationPackage{
+	expectedSubmissionInformationPackage := Package{
 		Date:            time.Now().UTC().Format(dateFormat),
 		ContentCategory: "nettarkiv",
 		ContentType:     "warc",
@@ -17,7 +17,7 @@ func TestCreateSubmissionInformationPackage(t *testing.T) {
 		Path:            "/path/to/nettaviser_SCREENSHOT_2023-20230718002403-0216-veidemann-contentwriter-5bb4677d67-qwtmt/nettaviser_SCREENSHOT_2023-20230718002403-0216-veidemann-contentwriter-5bb4677d67-qwtmt.warc.gz",
 	}
 
-	submissionInformationPackage := Create("/path/to/nettaviser_SCREENSHOT_2023-20230718002403-0216-veidemann-contentwriter-5bb4677d67-qwtmt/nettaviser_SCREENSHOT_2023-20230718002403-0216-veidemann-contentwriter-5bb4677d67-qwtmt.warc.gz", "nettaviser_SCREENSHOT_2023-20230718002403-0216-veidemann-contentwriter-5bb4677d67-qwtmt")
+	submissionInformationPackage := CreatePackage("/path/to/nettaviser_SCREENSHOT_2023-20230718002403-0216-veidemann-contentwriter-5bb4677d67-qwtmt/nettaviser_SCREENSHOT_2023-20230718002403-0216-veidemann-contentwriter-5bb4677d67-qwtmt.warc.gz", "nettaviser_SCREENSHOT_2023-20230718002403-0216-veidemann-contentwriter-5bb4677d67-qwtmt")
 
 	if expectedSubmissionInformationPackage.ContentCategory != submissionInformationPackage.ContentCategory {
 		t.Errorf("Expected %s, got %s", expectedSubmissionInformationPackage.ContentCategory, submissionInformationPackage.ContentCategory)

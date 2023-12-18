@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type TransferSubmissionInformationPackage struct {
+type Package struct {
 	Date            string `json:"date"`
 	ContentCategory string `json:"contentCategory"`
 	ContentType     string `json:"contentType"`
@@ -15,7 +15,7 @@ type TransferSubmissionInformationPackage struct {
 	Path            string `json:"path"`
 }
 
-func CreateSubmissionInformationPackage(payloadPath string, payloadDirName string) TransferSubmissionInformationPackage {
+func CreatePackage(payloadPath string, payloadDirName string) Package {
 	date := time.Now().UTC().Format("2006-01-02T15:04:05.000")
 	contentCategory := "nettarkiv"
 	contentType := "warc"
@@ -23,7 +23,7 @@ func CreateSubmissionInformationPackage(payloadPath string, payloadDirName strin
 	identifier := commonPart + "_" + uuid.New().String()
 	urn := "URN:NBN:" + commonPart
 
-	return TransferSubmissionInformationPackage{
+	return Package{
 		Date:            date,
 		ContentCategory: contentCategory,
 		ContentType:     contentType,

@@ -47,7 +47,7 @@ func getFirstAndLastOffsets(kafkaEndpoints []string, transferTopicName string) (
 	return offsets{first: firstOffset, last: lastOffset}, nil
 }
 
-func readLatestMessages(kafkaEndpoints []string, transferTopicName string) ([]submission_information_package.SubmissionInformationPackage, error) {
+func readLatestMessages(kafkaEndpoints []string, transferTopicName string) ([]submission_information_package.Package, error) {
 	messageReader := kafkaHelpers.MessageReader{
 		Reader: kafka.NewReader(kafka.ReaderConfig{
 			Brokers: kafkaEndpoints,
@@ -63,7 +63,7 @@ func readLatestMessages(kafkaEndpoints []string, transferTopicName string) ([]su
 	}
 	readTimeout := 10 * time.Second
 
-	var messages []submission_information_package.SubmissionInformationPackage
+	var messages []submission_information_package.Package
 
 	for offsetToReadFrom := offsets.first; offsetToReadFrom < offsets.last; offsetToReadFrom++ {
 		fmt.Printf("Reading message at offset '%d'\n", offsetToReadFrom)
@@ -84,9 +84,9 @@ func readLatestMessages(kafkaEndpoints []string, transferTopicName string) ([]su
 			fmt.Printf("Message at offset '%d' is nil, skipping offset\n", offsetToReadFrom)
 			continue
 		}
-		var transferSubmissionInformationPackage submission_information_package.SubmissionInformationPackage
+		var submissionInformationPackage submission_information_package.Package
 
-		err = json.Unmarshal(message.Value, &transferSubmissionInformationPackage)
+		err = json.Unmarshal(message.Value, &submissionInformationPackage)
 		if err != nil {
 			syntaxError := new(json.SyntaxError)
 			if errors.As(err, &syntaxError) {
@@ -95,15 +95,15 @@ func readLatestMessages(kafkaEndpoints []string, transferTopicName string) ([]su
 			}
 			return nil, fmt.Errorf("failed to unmarshal json, original error: '%w'", err)
 		}
-		messages = append(messages, transferSubmissionInformationPackage)
+		messages = append(messages, submissionInformationPackage)
 
 	}
 
 	return messages, nil
 }
 
-func webArchiveRelevantMessages(messages []submission_information_package.SubmissionInformationPackage) ([]submission_information_package.SubmissionInformationPackage, error) {
-	var relevantMessages []submission_information_package.SubmissionInformationPackage
+func webArchiveRelevantMessages(messages []submission_information_package.Package) ([]submission_information_package.Package, error) {
+	var relevantMessages []submission_information_package.Package
 	for _, message := range messages {
 		if message.ContentCategory == "nettarkiv" {
 			if message.ContentType != "warc" {
@@ -174,9 +174,9 @@ func PrepareAndSendSubmissionInformationPackage(kafkaEndpoints []string, transfe
 				return fmt.Errorf("found file '%s' in root path '%s', but expected only directories", path.Name(), rootPath)
 			}
 			fmt.Printf("Processing directory %s\n", destinationPath)
-			transferSubmissionInformationPackage := submission_information_package.Create(destinationPath, directoryName)
+			submissionInformationPackage := submission_information_package.CreatePackage(destinationPath, directoryName)
 
-			kafkaMessage, err := json.Marshal(transferSubmissionInformationPackage)
+			kafkaMessage, err := json.Marshal(submissionInformationPackage)
 			if err != nil {
 				return fmt.Errorf("failed to marshal json, original error: '%w'", err)
 			}

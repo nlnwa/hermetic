@@ -7,7 +7,7 @@ import (
 )
 
 func TestWebArchiveRelevantMessages(t *testing.T) {
-	nettarkivetMessage := submission_information_package.SubmissionInformationPackage{
+	nettarkivetMessage := submission_information_package.Package{
 		Date:            time.Now().UTC().Format("2006-01-02T15:04:05.000"),
 		ContentCategory: "nettarkiv",
 		ContentType:     "warc",
@@ -15,7 +15,7 @@ func TestWebArchiveRelevantMessages(t *testing.T) {
 		Urn:             "not-important",
 		Path:            "not-important",
 	}
-	otherMessage := submission_information_package.SubmissionInformationPackage{
+	otherMessage := submission_information_package.Package{
 		Date:            time.Now().UTC().Format("2006-01-02T15:04:05.000"),
 		ContentCategory: "other",
 		ContentType:     "other",
@@ -23,7 +23,7 @@ func TestWebArchiveRelevantMessages(t *testing.T) {
 		Urn:             "other",
 		Path:            "other",
 	}
-	messages := []submission_information_package.SubmissionInformationPackage{nettarkivetMessage, otherMessage}
+	messages := []submission_information_package.Package{nettarkivetMessage, otherMessage}
 	filteredResults, err := webArchiveRelevantMessages(messages)
 	if err != nil {
 		t.Errorf("Expected no error, got '%s'", err)
