@@ -20,3 +20,12 @@ hermetic verify \
     --kafka-endpoints=<list-of-kafka-endpoints> \
     --reject-topic <topic-name>
 ```
+
+### Acquisition upload
+
+```shell
+hermetic acquistion \
+    --kafka-endpoints=<list-of-kafka-endpoints> \
+    --transfer-topic <topic-name> \
+    --acquisition-root=</path/to/root/of/acquisition>
+```

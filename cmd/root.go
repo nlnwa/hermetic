@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"hermetic/cmd/acquisition"
 	"hermetic/cmd/send"
 	"hermetic/cmd/verify"
 	"hermetic/internal/common_flags"
@@ -17,5 +18,6 @@ func NewRootCommand() *cobra.Command {
 	rootCommand.PersistentFlags().StringVar(&common_flags.TeamsWebhookNotificationUrl, "teams-webhook-notification-url", "", "url to teams webhook for notifications")
 	rootCommand.AddCommand(send.NewCommand())
 	rootCommand.AddCommand(verify.NewCommand())
+	rootCommand.AddCommand(acquisition.NewCommand())
 	return rootCommand
 }
