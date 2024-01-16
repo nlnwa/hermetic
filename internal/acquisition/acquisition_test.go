@@ -31,13 +31,20 @@ func TestValidate(t *testing.T) {
 	}
 
 	_, err = acquisitionYamlFile.WriteString(`
-__acquisition_version__: "0.1.0"
-acquisition:
+__acquisition_version__: "0.2.0"
+archive-unit:
     name: "dummy-acquisition"
-    date: "2024-01-03T09:29:16+00:00"
-    original-purpose: "Lorem ipsum dolor sit amet, consectetur adipiscing elit."
-    acquisition-purpose: "Lorem ipsum dolor sit amet, consectetur adipiscing elit."
-    access-considerations: "Lorem ipsum dolor sit amet, consectetur adipiscing elit."
+    type: "acquisition"
+    creator: "john doe"
+    description: "Lorem ipsum"
+    copyright-clearance: "Lorem ipsum"
+    access-considerations: "Lorem ipsum"
+    deposit:
+        depositor: "jane doe"
+        date: "2024-01-03T09:29:16+00:00"
+        acquisition-purpose: "Lorem ipsum"
+    handling:
+        author: "jake doe"
 
 files:
     - name: "acquisition.yaml"
@@ -56,10 +63,6 @@ files:
       description: "Dummy file"
       format: "plain"
       path: "dummy.txt"
-
-acquisition-handling:
-    responsible: "nettarkivet"
-    author: "Unknown"
 `)
 
 	if err != nil {

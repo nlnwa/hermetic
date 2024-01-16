@@ -16,18 +16,27 @@ import (
 
 const (
 	contentType                 = "acquisition"
-	supportedAcquisitionVersion = "0.1.0"
+	supportedAcquisitionVersion = "0.2.0"
 )
 
 type DataModel struct {
 	AcquisitionVersion string `yaml:"__acquisition_version__"`
-	Acquisition        struct {
+	ArchiveUnit        struct {
 		Name                 string `yaml:"name"`
-		Date                 string `yaml:"date"`
-		OriginalPurpose      string `yaml:"original-purpose"`
-		AcquisitionPurpose   string `yaml:"acquisition-purpose"`
+		Type                 string `yaml:"type"`
+		Creator              string `yaml:"creator"`
+		Description          string `yaml:"description"`
+		CopyrightClearance   string `yaml:"copyright-clearance"`
 		AccessConsiderations string `yaml:"access-considerations"`
-	} `yaml:"acquisition"`
+		Deposit              struct {
+			Depositor          string `yaml:"depositor"`
+			Date               string `yaml:"date"`
+			AcquisitionPurpose string `yaml:"acquisition-purpose"`
+		} `yaml:"deposit"`
+		Handling struct {
+			Author string `yaml:"author"`
+		} `yaml:"handling"`
+	} `yaml:"archive-unit"`
 
 	Files []struct {
 		Name        string `yaml:"name"`
@@ -35,10 +44,6 @@ type DataModel struct {
 		Path        string `yaml:"path"`
 		Description string `yaml:"description"`
 	} `yaml:"files"`
-	AcquisitionHandling struct {
-		Responsible string `yaml:"responsible"`
-		Author      string `yaml:"author"`
-	} `yaml:"acquisition-handling"`
 }
 
 func PrepareAndSendSubmissionInformationPackage(kafkaEndpoints []string, transferTopicName string, acquisitionRoot string) error {
@@ -67,11 +72,11 @@ func PrepareAndSendSubmissionInformationPackage(kafkaEndpoints []string, transfe
 		return fmt.Errorf("failed to process yaml file, original error: '%w'", err)
 	}
 
-	identifier := dataModel.Acquisition.Name + "-" + dataModel.Acquisition.Date
+	identifier := dataModel.ArchiveUnit.Name + "-" + dataModel.ArchiveUnit.Deposit.Date
 
 	submissionInformationPackage := submission_information_package.CreatePackage(acquisitionRoot, identifier, contentType)
 
-	expectedURN := "URN:NBN:no-nb_nettarkiv_" + dataModel.Acquisition.Name + "-" + dataModel.Acquisition.Date
+	expectedURN := "URN:NBN:no-nb_nettarkiv_" + dataModel.ArchiveUnit.Name + "-" + dataModel.ArchiveUnit.Deposit.Date
 
 	if submissionInformationPackage.Urn != expectedURN {
 		return fmt.Errorf("failed to create URN, expected %s, got %s", expectedURN, submissionInformationPackage.Urn)
@@ -183,22 +188,29 @@ func fileValidation(rootPath string, metadata DataModel) error {
 
 func otherMetadataValidation(metadata DataModel) error {
 	test := map[string]string{}
-	test["metadata.Acquisition.Name"] = metadata.Acquisition.Name
-	test["metadata.Acquisition.Date"] = metadata.Acquisition.Date
-	test["metadata.Acquisition.OriginalPurpose"] = metadata.Acquisition.OriginalPurpose
-	test["metadata.Acquisition.AcquisitionPurpose"] = metadata.Acquisition.AcquisitionPurpose
-	test["metadata.Acquisition.AccessConsiderations"] = metadata.Acquisition.AccessConsiderations
-	test["metadata.AcquisitionHandling.Responsible"] = metadata.AcquisitionHandling.Responsible
-	test["metadata.AcquisitionHandling.Author"] = metadata.AcquisitionHandling.Author
+	test["metadata.ArchiveUnit.Name"] = metadata.ArchiveUnit.Name
+	test["metadata.ArchiveUnit.Type"] = metadata.ArchiveUnit.Type
+	test["metadata.ArchiveUnit.Creator"] = metadata.ArchiveUnit.Creator
+	test["metadata.ArchiveUnit.Description"] = metadata.ArchiveUnit.Description
+	test["metadata.ArchiveUnit.CopyrightClearance"] = metadata.ArchiveUnit.CopyrightClearance
+	test["metadata.ArchiveUnit.AccessConsiderations"] = metadata.ArchiveUnit.AccessConsiderations
+	test["metadata.ArchiveUnit.Deposit.Depositor"] = metadata.ArchiveUnit.Deposit.Depositor
+	test["metadata.ArchiveUnit.Deposit.Date"] = metadata.ArchiveUnit.Deposit.Date
+	test["metadata.ArchiveUnit.Deposit.AcquisitionPurpose"] = metadata.ArchiveUnit.Deposit.AcquisitionPurpose
+	test["metadata.ArchiveUnit.Handling.Author"] = metadata.ArchiveUnit.Handling.Author
 
 	for fieldName, value := range test {
 		if value == "" {
 			return fmt.Errorf("field '%s' is empty", fieldName)
 		}
 	}
-	_, err := time.Parse(time.RFC3339, metadata.Acquisition.Date)
+	_, err := time.Parse(time.RFC3339, metadata.ArchiveUnit.Deposit.Date)
 	if err != nil {
-		return fmt.Errorf("failed to parse date '%s', original error: '%w'", metadata.Acquisition.Date, err)
+		return fmt.Errorf("failed to parse date '%s', original error: '%w'", metadata.ArchiveUnit.Deposit.Date, err)
+	}
+
+	if metadata.ArchiveUnit.Type != "acquisition" {
+		return fmt.Errorf("field 'metadata.ArchiveUnit.Type' is '%s', but expected 'acquisition'", metadata.ArchiveUnit.Type)
 	}
 
 	return nil
