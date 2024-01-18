@@ -9,6 +9,10 @@ import (
 	"github.com/carlmjohnson/requests"
 )
 
+const (
+	avoidMicrosoftTeamsWebhookRateLimit = 1 * time.Second
+)
+
 type Fact struct {
 	Name  string `json:"name"`
 	Value string `json:"value"`
@@ -45,6 +49,7 @@ func SendMessage(payload Message, webhookUrl string) error {
 	if err != nil {
 		return fmt.Errorf("failed to send message to teams, cause: `%w`", err)
 	}
+	time.Sleep(avoidMicrosoftTeamsWebhookRateLimit)
 	return nil
 }
 
