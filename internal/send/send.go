@@ -141,7 +141,7 @@ func PrepareAndSendSubmissionInformationPackage(kafkaEndpoints []string, transfe
 	}
 	config := bigcache.Config{
 		Shards:      1024,
-		LifeWindow:  24 * time.Hour,
+		LifeWindow:  24 * 7 * time.Hour,
 		CleanWindow: 1 * time.Hour,
 	}
 	cache, err := bigcache.New(context.Background(), config)
