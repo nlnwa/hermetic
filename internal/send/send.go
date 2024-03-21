@@ -22,7 +22,8 @@ type offsets struct {
 }
 
 const (
-	warcContentType = "warc"
+	warcContentType        = "warc"
+	acquisitionContentType = "acquisition"
 )
 
 func getFirstAndLastOffsets(kafkaEndpoints []string, transferTopicName string) (offsets, error) {
@@ -110,8 +111,11 @@ func webArchiveRelevantMessages(messages []submission_information_package.Packag
 	var relevantMessages []submission_information_package.Package
 	for _, message := range messages {
 		if message.ContentCategory == "nettarkiv" {
-			if message.ContentType != warcContentType {
-				return nil, fmt.Errorf("found content type '%s' in message '%+v', expected '%s'", message.ContentType, message, warcContentType)
+			switch message.ContentType {
+			case warcContentType:
+			case acquisitionContentType:
+			default:
+				return nil, fmt.Errorf("found content type '%s' in message '%+v', expected '%s' or '%s'", message.ContentType, message, warcContentType, acquisitionContentType)
 			}
 			relevantMessages = append(relevantMessages, message)
 		}
