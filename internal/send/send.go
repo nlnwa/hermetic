@@ -22,7 +22,7 @@ type offsets struct {
 }
 
 const (
-	contentType = "warc"
+	warcContentType = "warc"
 )
 
 func getFirstAndLastOffsets(kafkaEndpoints []string, transferTopicName string) (offsets, error) {
@@ -110,8 +110,8 @@ func webArchiveRelevantMessages(messages []submission_information_package.Packag
 	var relevantMessages []submission_information_package.Package
 	for _, message := range messages {
 		if message.ContentCategory == "nettarkiv" {
-			if message.ContentType != contentType {
-				return nil, fmt.Errorf("found content type '%s' in message '%+v', expected '%s'", message.ContentType, message, contentType)
+			if message.ContentType != warcContentType {
+				return nil, fmt.Errorf("found content type '%s' in message '%+v', expected '%s'", message.ContentType, message, warcContentType)
 			}
 			relevantMessages = append(relevantMessages, message)
 		}
@@ -178,7 +178,7 @@ func PrepareAndSendSubmissionInformationPackage(kafkaEndpoints []string, transfe
 				return fmt.Errorf("found file '%s' in root path '%s', but expected only directories", path.Name(), rootPath)
 			}
 			fmt.Printf("Processing directory %s\n", destinationPath)
-			submissionInformationPackage := submission_information_package.CreatePackage(destinationPath, directoryName, contentType)
+			submissionInformationPackage := submission_information_package.CreatePackage(destinationPath, directoryName, warcContentType)
 
 			kafkaMessage, err := json.Marshal(submissionInformationPackage)
 			if err != nil {
