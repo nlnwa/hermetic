@@ -1,11 +1,4 @@
-package verifyImplementation
-
-type check struct {
-	Status  string
-	Message string
-	Reason  string
-	File    string
-}
+package confirmImplmentation
 
 type digitalPreservationSystemResponse struct {
 	Date            string
@@ -14,7 +7,6 @@ type digitalPreservationSystemResponse struct {
 	Path            string
 	ContentType     string
 	ContentCategory string
-	Checks          []check
 }
 
 type kafkaResponse struct {
