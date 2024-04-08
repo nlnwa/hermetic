@@ -14,11 +14,19 @@ hermetic send \
 ```
 
 ### Verify
-
+#### Reject
 ```shell
 hermetic verify \
     --kafka-endpoints=<list-of-kafka-endpoints> \
-    --reject-topic <topic-name>
+    reject
+      --reject-topic <topic-name>
+```
+#### Confirm
+```shell
+hermetic verify \
+--kafka-endpoints=<list-of-kafka-endpoints> \
+confirm
+--confirm-topic <topic-name>
 ```
 
 ### Acquisition upload
