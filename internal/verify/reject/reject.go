@@ -1,4 +1,4 @@
-package verifyImplementation
+package rejectImplementation
 
 import (
 	"context"
