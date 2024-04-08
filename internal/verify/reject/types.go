@@ -1,4 +1,4 @@
-package verifyImplementation
+package rejectImplementation
 
 type check struct {
 	Status  string
