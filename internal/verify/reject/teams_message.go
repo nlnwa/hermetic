@@ -2,12 +2,13 @@ package rejectImplementation
 
 import (
 	"fmt"
+	"hermetic/internal/dps"
 	"hermetic/internal/teams"
 	"strconv"
 	"strings"
 )
 
-func createTeamsDigitalPreservationSystemFailureMessage(message kafkaResponse, rejectTopicName string, kafkaEndpoints []string) teams.Message {
+func createTeamsDigitalPreservationSystemFailureMessage(message *dps.KafkaResponse, rejectTopicName string, kafkaEndpoints []string) teams.Message {
 	facts := []teams.Fact{
 		{
 			Name:  "Kafka message offset",

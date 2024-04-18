@@ -2,70 +2,30 @@ package rejectImplementation
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
-	"hermetic/internal/teams"
-	"time"
-
-	kafkaHelpers "hermetic/internal/kafka"
-
 	"github.com/segmentio/kafka-go"
+	"hermetic/internal/dps"
+	"hermetic/internal/teams"
 )
 
-func isWebArchiveOwned(message kafkaResponse) bool {
-	return message.DPSResponse.ContentCategory == "nettarkiv"
+func ReadRejectTopic(ctx context.Context, reader *kafka.Reader, teamsWebhookNotificationUrl string) error {
+	for {
+		response, err := dps.ReadMessages(ctx, reader)
+		if err != nil {
+			return fmt.Errorf("failed to read message from reject-topic: `%w`", err)
+		}
+		if err := ProcessMessagesFromRejectTopic(reader, response, teamsWebhookNotificationUrl); err != nil {
+			return fmt.Errorf("failed to process message from reject-topic: `%w`", err)
+		}
+	}
 }
 
-func Verify(rejectTopicName string, kafkaEndpoints []string, teamsWebhookNotificationUrl string) error {
-	reader := kafkaHelpers.MessageReader{
-		Reader: kafka.NewReader(kafka.ReaderConfig{
-			Brokers: kafkaEndpoints,
-			Topic:   rejectTopicName,
-			GroupID: "nettarkivet-hermetic-verify",
-		}),
+func ProcessMessagesFromRejectTopic(reader *kafka.Reader, response *dps.KafkaResponse, teamsWebhookNotificationUrl string) error {
+	fmt.Printf("Processing message with ContentCategory: '%s'\n", response.DPSResponse.ContentCategory)
+	payload := createTeamsDigitalPreservationSystemFailureMessage(response, reader.Config().Topic, reader.Config().Brokers)
+	err := teams.SendMessage(payload, teamsWebhookNotificationUrl)
+	if err != nil {
+		return fmt.Errorf("failed to send message to teams, cause: `%w`", err)
 	}
-	readTimeout := 10 * time.Second
-	cycleSleepDuration := 1 * time.Minute
-
-	for {
-		fmt.Printf("Reading next message with timeout '%s'\n", readTimeout)
-		message, err := reader.ReadMessageWithTimeout(readTimeout)
-		if errors.Is(err, context.DeadlineExceeded) {
-			fmt.Printf("Reading message timed out, sleeping for '%s'\n", cycleSleepDuration)
-			time.Sleep(cycleSleepDuration)
-			continue
-		}
-		if err != nil {
-			return fmt.Errorf("failed to read message, cause: `%w`", err)
-		}
-		var parsedMessage digitalPreservationSystemResponse
-
-		err = json.Unmarshal(message.Value, &parsedMessage)
-		if err != nil {
-			syntaxError := new(json.SyntaxError)
-			if errors.As(err, &syntaxError) {
-				fmt.Printf("Could not read message at offset '%d', syntax error in message, skipping offset\n", message.Offset)
-				continue
-			}
-			return fmt.Errorf("failed to unmarshal json, original error: '%w'", err)
-		}
-		response := kafkaResponse{
-			Offset:      message.Offset,
-			Key:         string(message.Key),
-			DPSResponse: parsedMessage,
-		}
-
-		if !isWebArchiveOwned(response) {
-			fmt.Printf("Skipping message with ContentCategory: '%s'\n", response.DPSResponse.ContentCategory)
-			continue
-		}
-
-		fmt.Printf("Processing message with ContentCategory: '%s'\n", response.DPSResponse.ContentCategory)
-		payload := createTeamsDigitalPreservationSystemFailureMessage(response, rejectTopicName, kafkaEndpoints)
-		err = teams.SendMessage(payload, teamsWebhookNotificationUrl)
-		if err != nil {
-			return fmt.Errorf("failed to send message to teams, cause: `%w`", err)
-		}
-	}
+	return nil
 }
