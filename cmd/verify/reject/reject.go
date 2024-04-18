@@ -1,11 +1,15 @@
 package reject
 
 import (
+	"context"
 	"fmt"
+	"github.com/segmentio/kafka-go"
 	"github.com/spf13/cobra"
 	"hermetic/internal/common_flags"
 	"hermetic/internal/teams"
 	rejectImplementation "hermetic/internal/verify/reject"
+	"os"
+	"os/signal"
 )
 
 func NewCommand() *cobra.Command {
@@ -29,7 +33,16 @@ func parseArgumentsAndCallVerify(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to get reject-topic flag, cause: `%w`", err)
 	}
 
-	err = rejectImplementation.Verify(rejectTopicName, common_flags.KafkaEndpoints, common_flags.TeamsWebhookNotificationUrl)
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancel()
+
+	reader := kafka.NewReader(kafka.ReaderConfig{
+		Brokers: common_flags.KafkaEndpoints,
+		Topic:   rejectTopicName,
+		GroupID: "nettarkivet-hermetic-verify",
+	})
+
+	err = rejectImplementation.ReadRejectTopic(ctx, reader, common_flags.TeamsWebhookNotificationUrl)
 	if err != nil {
 		err = fmt.Errorf("verification error, cause: `%w`", err)
 		fmt.Printf("Sending error message to Teams\n")
