@@ -39,19 +39,16 @@ func parseArgumentsAndCallVerify(cmd *cobra.Command, args []string) error {
 	reader := kafka.NewReader(kafka.ReaderConfig{
 		Brokers: common_flags.KafkaEndpoints,
 		Topic:   rejectTopicName,
-		GroupID: "nettarkivet-hermetic-verify",
+		GroupID: "nettarkivet-hermetic-verify-reject",
 	})
 
 	err = rejectImplementation.ReadRejectTopic(ctx, reader, common_flags.TeamsWebhookNotificationUrl)
 	if err != nil {
-		err = fmt.Errorf("verification error, cause: `%w`", err)
-		fmt.Printf("Sending error message to Teams\n")
+		fmt.Printf("Verification error: %v\n", err)
 		teamsErrorMessage := teams.CreateGeneralFailureMessage(err)
 		if err := teams.SendMessage(teamsErrorMessage, common_flags.TeamsWebhookNotificationUrl); err != nil {
-			err = fmt.Errorf("failed to send error message to Teams, cause: `%w`", err)
-			fmt.Printf("%s\n", err)
+			fmt.Printf("Failed to send error message to Teams: %v", err)
 		}
-		return err
 	}
 	return err
 }
