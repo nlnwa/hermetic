@@ -1,4 +1,4 @@
-package sendImplementation
+package dps
 
 import (
 	"hermetic/internal/submission_information_package"

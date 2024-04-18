@@ -24,9 +24,9 @@ hermetic verify \
 #### Confirm
 ```shell
 hermetic verify \
---kafka-endpoints=<list-of-kafka-endpoints> \
-confirm
---confirm-topic <topic-name>
+    --kafka-endpoints=<list-of-kafka-endpoints> \
+    confirm
+      --confirm-topic <topic-name>
 ```
 
 ### Acquisition upload
