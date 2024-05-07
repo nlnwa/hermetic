@@ -3,13 +3,14 @@ package confirm
 import (
 	"context"
 	"fmt"
-	"github.com/segmentio/kafka-go"
-	"github.com/spf13/cobra"
 	"hermetic/internal/common_flags"
 	"hermetic/internal/teams"
 	confirmImplementation "hermetic/internal/verify/confirm"
 	"os"
 	"os/signal"
+
+	"github.com/segmentio/kafka-go"
+	"github.com/spf13/cobra"
 )
 
 func NewCommand() *cobra.Command {
