@@ -1,12 +1,18 @@
 package confirmImplmentation
 
 import (
+	"context"
 	"fmt"
+	"github.com/segmentio/kafka-go"
+	"hermetic/internal/dps"
 )
 
-func Verify(confirmTopicName string) error {
-	fmt.Printf("Reading messages from topic '%s'\n", confirmTopicName)
-	fmt.Printf("This command is not implemented yet\n" +
-		"Aims to solve issue https://github.com/nlnwa/hermetic/issues/3 ")
-	return nil
+func ReadConfirmTopic(ctx context.Context, reader *kafka.Reader) error {
+	for {
+		response, err := dps.ReadMessages(ctx, reader)
+		if err != nil {
+			return fmt.Errorf("failed to read message from confirm-topic: `%w`", err)
+		}
+		fmt.Printf("SIP successfully preserved: %+v\n", response)
+	}
 }
