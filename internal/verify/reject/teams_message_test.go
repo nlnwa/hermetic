@@ -3,6 +3,7 @@ package rejectImplementation
 import (
 	"encoding/json"
 	"fmt"
+	"hermetic/internal/dps"
 	"hermetic/internal/teams"
 	"testing"
 
@@ -10,17 +11,17 @@ import (
 )
 
 func TestCreateTeamsMessage(t *testing.T) {
-	kafkaResponse := kafkaResponse{
+	kafkaResponse := &dps.KafkaResponse{
 		Offset: 0,
 		Key:    "key",
-		DPSResponse: digitalPreservationSystemResponse{
+		DPSResponse: dps.DigitalPreservationSystemResponse{
 			Date:            "date",
 			Identifier:      "identifier",
 			Urn:             "urn",
 			Path:            "path",
 			ContentType:     "contentType",
 			ContentCategory: "contentCategory",
-			Checks: []check{
+			Checks: []dps.Check{
 				{
 					Status:  "status",
 					Message: "message",
@@ -30,6 +31,7 @@ func TestCreateTeamsMessage(t *testing.T) {
 			},
 		},
 	}
+
 	rejectTopicName := "rejectTopicName"
 	kafkaEndpoints := []string{"kafkaEndpoints"}
 

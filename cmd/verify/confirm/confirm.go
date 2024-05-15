@@ -1,11 +1,15 @@
 package confirm
 
 import (
+	"context"
 	"fmt"
+	"github.com/segmentio/kafka-go"
 	"github.com/spf13/cobra"
 	"hermetic/internal/common_flags"
 	"hermetic/internal/teams"
 	confirmImplementation "hermetic/internal/verify/confirm"
+	"os"
+	"os/signal"
 )
 
 func NewCommand() *cobra.Command {
@@ -13,7 +17,7 @@ func NewCommand() *cobra.Command {
 		Use:   "confirm",
 		Short: "Continuously report all successfully preserved data",
 		Args:  cobra.NoArgs,
-		RunE:  parseArgumentsAndCallVerify,
+		RunE:  parseArgumentsAndReadConfirmTopic,
 	}
 	confirmTopicFlagName := "confirm-topic"
 	command.Flags().String(confirmTopicFlagName, "", "name of confirm-topic")
@@ -23,13 +27,22 @@ func NewCommand() *cobra.Command {
 	return command
 }
 
-func parseArgumentsAndCallVerify(cmd *cobra.Command, args []string) error {
+func parseArgumentsAndReadConfirmTopic(cmd *cobra.Command, args []string) error {
 	confirmTopicName, err := cmd.Flags().GetString("confirm-topic")
 	if err != nil {
 		return fmt.Errorf("failed to get confirm-topic flag, cause: `%w`", err)
 	}
 
-	err = confirmImplementation.Verify(confirmTopicName)
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancel()
+
+	reader := kafka.NewReader(kafka.ReaderConfig{
+		Brokers: common_flags.KafkaEndpoints,
+		Topic:   confirmTopicName,
+		GroupID: "nettarkivet-hermetic-verify-confirm",
+	})
+
+	err = confirmImplementation.ReadConfirmTopic(ctx, reader)
 	if err != nil {
 		err = fmt.Errorf("verification error, cause: `%w`", err)
 		fmt.Printf("Sending error message to Teams\n")

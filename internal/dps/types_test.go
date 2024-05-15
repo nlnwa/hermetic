@@ -1,22 +1,22 @@
-package rejectImplementation
+package dps
 
 import (
 	"testing"
 )
 
 func TestIsWebArchiveOwnedInvalid(t *testing.T) {
-	notWebArchive := kafkaResponse{
+	notWebArchive := KafkaResponse{
 		Offset: int64(0),
 		Key:    "key",
 
-		DPSResponse: digitalPreservationSystemResponse{
+		DPSResponse: DigitalPreservationSystemResponse{
 			ContentCategory: "something else",
 			Date:            "date",
 			Identifier:      "identifier",
 			Urn:             "urn",
 			Path:            "path",
 			ContentType:     "contentType",
-			Checks: []check{
+			Checks: []Check{
 				{
 					Status:  "status",
 					Message: "message",
@@ -26,23 +26,23 @@ func TestIsWebArchiveOwnedInvalid(t *testing.T) {
 			},
 		},
 	}
-	if isWebArchiveOwned(notWebArchive) {
+	if IsWebArchiveOwned(&notWebArchive.DPSResponse) {
 		t.Errorf("Expected false, got true")
 	}
 }
 func TestIsWebArchiveOwnedValid(t *testing.T) {
-	webArchiveResponse := kafkaResponse{
+	webArchiveResponse := KafkaResponse{
 		Offset: int64(0),
 		Key:    "key",
 
-		DPSResponse: digitalPreservationSystemResponse{
+		DPSResponse: DigitalPreservationSystemResponse{
 			ContentCategory: "nettarkiv",
 			Date:            "date",
 			Identifier:      "identifier",
 			Urn:             "urn",
 			Path:            "path",
 			ContentType:     "contentType",
-			Checks: []check{
+			Checks: []Check{
 				{
 					Status:  "status",
 					Message: "message",
@@ -52,7 +52,7 @@ func TestIsWebArchiveOwnedValid(t *testing.T) {
 			},
 		},
 	}
-	if !isWebArchiveOwned(webArchiveResponse) {
+	if !IsWebArchiveOwned(&webArchiveResponse.DPSResponse) {
 		t.Errorf("Expected true, got false")
 	}
 
