@@ -12,6 +12,11 @@ import (
 	"os/signal"
 )
 
+const (
+	confirmTopicFlagName           string = "confirm-topic"
+	confirmMessageReceiverFlagName string = "confirm-message-receiver"
+)
+
 func NewCommand() *cobra.Command {
 	command := &cobra.Command{
 		Use:   "confirm",
@@ -19,18 +24,25 @@ func NewCommand() *cobra.Command {
 		Args:  cobra.NoArgs,
 		RunE:  parseArgumentsAndReadConfirmTopic,
 	}
-	confirmTopicFlagName := "confirm-topic"
 	command.Flags().String(confirmTopicFlagName, "", "name of confirm-topic")
 	if err := command.MarkFlagRequired(confirmTopicFlagName); err != nil {
 		panic(fmt.Sprintf("failed to mark flag %s as required, original error: '%s'", confirmTopicFlagName, err))
 	}
+
+	command.Flags().String(confirmMessageReceiverFlagName, "", "optional URL for confirm message receiver")
+
 	return command
 }
 
 func parseArgumentsAndReadConfirmTopic(cmd *cobra.Command, args []string) error {
-	confirmTopicName, err := cmd.Flags().GetString("confirm-topic")
+	confirmTopicName, err := cmd.Flags().GetString(confirmTopicFlagName)
 	if err != nil {
 		return fmt.Errorf("failed to get confirm-topic flag, cause: `%w`", err)
+	}
+
+	confirmMessageReceiverUrl, err := cmd.Flags().GetString(confirmMessageReceiverFlagName)
+	if err != nil {
+		return fmt.Errorf("failed to get confirm-message-receiver flag, cause: `%w`", err)
 	}
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
@@ -42,7 +54,11 @@ func parseArgumentsAndReadConfirmTopic(cmd *cobra.Command, args []string) error 
 		GroupID: "nettarkivet-hermetic-verify-confirm",
 	})
 
-	err = confirmImplementation.ReadConfirmTopic(ctx, reader)
+	if confirmMessageReceiverUrl != "" {
+		err = confirmImplementation.ReadConfirmTopic(ctx, reader, confirmMessageReceiverUrl)
+	} else {
+		err = confirmImplementation.ReadConfirmTopic(ctx, reader)
+	}
 	if err != nil {
 		err = fmt.Errorf("verification error, cause: `%w`", err)
 		fmt.Printf("Sending error message to Teams\n")
