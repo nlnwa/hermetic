@@ -3,6 +3,7 @@ package kafka
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/google/uuid"
 	"github.com/segmentio/kafka-go"
@@ -14,7 +15,7 @@ type Sender struct {
 
 func (sender *Sender) SendMessageToKafkaTopic(payload []byte) error {
 	kafkaMessageUuid := uuid.New()
-	fmt.Printf("Sending message with uuid %s\n", kafkaMessageUuid)
+	slog.Info("Sending message to Kafka topic", "UUID", kafkaMessageUuid)
 	kafkaMessageUuidBytes, err := kafkaMessageUuid.MarshalText()
 	if err != nil {
 		return fmt.Errorf("failed to marshal uuid, original error: '%w'", err)

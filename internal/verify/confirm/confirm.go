@@ -16,6 +16,7 @@ import (
 func ReadConfirmTopic(ctx context.Context, reader *kafka.Reader, receiverUrl string) error {
 	for {
 		response, err := dps.ReadMessages(ctx, reader)
+		slog.Info("Received confirm message from DPS", "message", response.DPSResponse)
 		if err != nil {
 			return fmt.Errorf("failed to read message from confirm-topic: `%w`", err)
 		}
@@ -24,8 +25,6 @@ func ReadConfirmTopic(ctx context.Context, reader *kafka.Reader, receiverUrl str
 			if err != nil {
 				return fmt.Errorf("failed to send confirm message: `%w`", err)
 			}
-		} else {
-			fmt.Printf("Received message: %v\n", response.DPSResponse)
 		}
 	}
 }
@@ -61,6 +60,6 @@ func SendConfirmMessage(baseUrl string, response dps.DigitalPreservationSystemRe
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
-	fmt.Printf("Successfully sent confirm message to %s\n", url)
+	slog.Info("Successfully sent confirm message", "receiver_url", url)
 	return nil
 }
