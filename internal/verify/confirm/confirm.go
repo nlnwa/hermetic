@@ -7,19 +7,20 @@ import (
 	"fmt"
 	"github.com/segmentio/kafka-go"
 	"hermetic/internal/dps"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"time"
 )
 
-func ReadConfirmTopic(ctx context.Context, reader *kafka.Reader, receiverUrl ...string) error {
+func ReadConfirmTopic(ctx context.Context, reader *kafka.Reader, receiverUrl string) error {
 	for {
 		response, err := dps.ReadMessages(ctx, reader)
 		if err != nil {
 			return fmt.Errorf("failed to read message from confirm-topic: `%w`", err)
 		}
 		if len(receiverUrl) > 0 {
-			err = SendConfirmMessage(receiverUrl[0], response.DPSResponse)
+			err = SendConfirmMessage(receiverUrl, response.DPSResponse)
 			if err != nil {
 				return fmt.Errorf("failed to send confirm message: `%w`", err)
 			}
@@ -30,6 +31,7 @@ func ReadConfirmTopic(ctx context.Context, reader *kafka.Reader, receiverUrl ...
 }
 
 func SendConfirmMessage(baseUrl string, response dps.DigitalPreservationSystemResponse) error {
+	slog.Info("Sending confirm message to receiver", "receiver_url", baseUrl)
 	url, err := url.JoinPath(baseUrl, response.Identifier)
 	if err != nil {
 		return fmt.Errorf("failed to join URL path: `%w`", err)

@@ -54,11 +54,7 @@ func parseArgumentsAndReadConfirmTopic(cmd *cobra.Command, args []string) error 
 		GroupID: "nettarkivet-hermetic-verify-confirm",
 	})
 
-	if confirmMessageReceiverUrl != "" {
-		err = confirmImplementation.ReadConfirmTopic(ctx, reader, confirmMessageReceiverUrl)
-	} else {
-		err = confirmImplementation.ReadConfirmTopic(ctx, reader)
-	}
+	err = confirmImplementation.ReadConfirmTopic(ctx, reader, confirmMessageReceiverUrl)
 	if err != nil {
 		err = fmt.Errorf("verification error, cause: `%w`", err)
 		fmt.Printf("Sending error message to Teams\n")
