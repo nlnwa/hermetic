@@ -8,6 +8,7 @@ import (
 	"hermetic/internal/common_flags"
 	"hermetic/internal/teams"
 	confirmImplementation "hermetic/internal/verify/confirm"
+	"log/slog"
 	"os"
 	"os/signal"
 )
@@ -57,11 +58,11 @@ func parseArgumentsAndReadConfirmTopic(cmd *cobra.Command, args []string) error 
 	err = confirmImplementation.ReadConfirmTopic(ctx, reader, confirmMessageReceiverUrl)
 	if err != nil {
 		err = fmt.Errorf("verification error, cause: `%w`", err)
-		fmt.Printf("Sending error message to Teams\n")
+		slog.Info("Sending error message to Teams")
 		teamsErrorMessage := teams.CreateGeneralFailureMessage(err)
 		if err := teams.SendMessage(teamsErrorMessage, common_flags.TeamsWebhookNotificationUrl); err != nil {
 			err = fmt.Errorf("failed to send error message to Teams, cause: `%w`", err)
-			fmt.Printf("%s\n", err)
+			slog.Error(err.Error())
 		}
 		return err
 	}

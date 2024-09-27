@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/carlmjohnson/requests"
@@ -36,7 +37,7 @@ type Message struct {
 func SendMessage(payload Message, webhookUrl string) error {
 	timeoutContext, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	fmt.Println("Sending message to Teams")
+	slog.Info("Sending message to Teams")
 	bytes, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("failed to marshal message, cause: `%w`", err)

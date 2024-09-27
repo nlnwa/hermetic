@@ -5,6 +5,7 @@ import (
 	"hermetic/internal/common_flags"
 	"hermetic/internal/dps"
 	"hermetic/internal/teams"
+	"log/slog"
 
 	"github.com/spf13/cobra"
 )
@@ -59,7 +60,7 @@ func parseArgumentsAndCallSend(cmd *cobra.Command, args []string) error {
 		teamsErrorMessage := teams.CreateGeneralFailureMessage(err)
 		if err := teams.SendMessage(teamsErrorMessage, common_flags.TeamsWebhookNotificationUrl); err != nil {
 			err = fmt.Errorf("failed to send error message to Teams, cause: `%w`", err)
-			fmt.Printf("%s\n", err)
+			slog.Error(err.Error())
 		}
 		return err
 	}

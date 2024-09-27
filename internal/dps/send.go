@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"os"
 	"time"
@@ -71,7 +72,7 @@ func readLatestMessages(kafkaEndpoints []string, transferTopicName string) ([]su
 	var messages []submission_information_package.Package
 
 	for offsetToReadFrom := offsets.first; offsetToReadFrom < offsets.last; offsetToReadFrom++ {
-		fmt.Printf("Reading message at offset '%d'\n", offsetToReadFrom)
+		slog.Info("Reading message ", "offset", offsetToReadFrom)
 		err := messageReader.Reader.SetOffset(offsetToReadFrom)
 		if err != nil {
 			return nil, fmt.Errorf("failed to set offset '%d', original error: '%w'", offsetToReadFrom, err)
@@ -79,14 +80,14 @@ func readLatestMessages(kafkaEndpoints []string, transferTopicName string) ([]su
 
 		message, err := messageReader.ReadMessageWithTimeout(readTimeout)
 		if errors.Is(err, context.DeadlineExceeded) {
-			fmt.Printf("Could not read message at offset '%d', read timeout '%s' exceeded, skipping offset\n", offsetToReadFrom, readTimeout)
+			slog.Error("Could not read message, timeout exceeded. Skipping offset.", "offset", offsetToReadFrom, "read_timeout", readTimeout)
 			continue
 		}
 		if err != nil {
 			return nil, fmt.Errorf("failed to read message at offset '%d', original error: '%w'", offsetToReadFrom, err)
 		}
 		if message.Value == nil {
-			fmt.Printf("Message at offset '%d' is nil, skipping offset\n", offsetToReadFrom)
+			slog.Info("Message at offset is nil, skipping offset", "offset", offsetToReadFrom)
 			continue
 		}
 		var submissionInformationPackage submission_information_package.Package
@@ -95,7 +96,7 @@ func readLatestMessages(kafkaEndpoints []string, transferTopicName string) ([]su
 		if err != nil {
 			syntaxError := new(json.SyntaxError)
 			if errors.As(err, &syntaxError) {
-				fmt.Printf("Could not read message at offset '%d', syntax error in message, skipping offset\n", offsetToReadFrom)
+				slog.Error("Could not read message at offset, syntax error in message, skipping offset", "offset", offsetToReadFrom)
 				continue
 			}
 			return nil, fmt.Errorf("failed to unmarshal json, original error: '%w'", err)
@@ -154,7 +155,7 @@ func PrepareAndSendSubmissionInformationPackage(kafkaEndpoints []string, transfe
 	}
 
 	for _, message := range relevantMessages {
-		fmt.Printf("Pushing '%s' to cache\n", message.Path)
+		slog.Error("Pushing message to cache", "path", message.Path)
 		err := cache.Set(message.Path, []byte("Sent"))
 		if err != nil {
 			return fmt.Errorf("failed to set '%s' in cache, original error: '%w'", message.Path, err)
@@ -171,7 +172,7 @@ func PrepareAndSendSubmissionInformationPackage(kafkaEndpoints []string, transfe
 			destinationPath := rootPath + directoryName
 			_, err := cache.Get(destinationPath)
 			if err == nil {
-				fmt.Printf("Skipping directory '%s' as it has already been processed.\n", destinationPath)
+				slog.Info("Skipping directory, already processed.", "path", destinationPath)
 				continue
 			} else {
 				if !errors.Is(err, bigcache.ErrEntryNotFound) {
@@ -181,7 +182,7 @@ func PrepareAndSendSubmissionInformationPackage(kafkaEndpoints []string, transfe
 			if !path.IsDir() {
 				return fmt.Errorf("found file '%s' in root path '%s', but expected only directories", path.Name(), rootPath)
 			}
-			fmt.Printf("Processing directory %s\n", destinationPath)
+			slog.Info("Processing directory", "path", destinationPath)
 			submissionInformationPackage := submission_information_package.CreatePackage(destinationPath, directoryName, warcContentType)
 
 			kafkaMessage, err := json.Marshal(submissionInformationPackage)
