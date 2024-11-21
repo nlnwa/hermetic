@@ -1,20 +1,19 @@
-package rejectImplementation
+package teams
 
 import (
 	"encoding/json"
 	"fmt"
-	"hermetic/internal/dps"
-	"hermetic/internal/teams"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/nlnwa/hermetic/internal/dps"
 )
 
 func TestCreateTeamsMessage(t *testing.T) {
 	kafkaResponse := &dps.KafkaResponse{
 		Offset: 0,
 		Key:    "key",
-		DPSResponse: dps.DigitalPreservationSystemResponse{
+		Response: dps.Response{
 			Date:            "date",
 			Identifier:      "identifier",
 			Urn:             "urn",
@@ -35,23 +34,23 @@ func TestCreateTeamsMessage(t *testing.T) {
 	rejectTopicName := "rejectTopicName"
 	kafkaEndpoints := []string{"kafkaEndpoints"}
 
-	message := createTeamsDigitalPreservationSystemFailureMessage(
+	message := VerificationError(
 		kafkaResponse,
 		rejectTopicName,
 		kafkaEndpoints,
 	)
-	expectedMessage := teams.Message{
+	expectedMessage := Message{
 		Type:       "MessageCard",
 		Context:    "http://schema.org/extensions",
 		ThemeColor: "0076D7",
 		Summary:    "Verification error",
-		Sections: []teams.Section{
+		Sections: []Section{
 			{
 				ActivityTitle:    "Verification error",
 				ActivitySubtitle: "A Digital Preservation System (DPS) upload failed",
 				ActivityImage:    "https://www.dictionary.com/e/wp-content/uploads/2018/03/thisisfine-1-300x300.jpg",
 
-				Facts: []teams.Fact{
+				Facts: []Fact{
 					{
 						Name:  "Kafka message offset",
 						Value: "0",
@@ -118,7 +117,7 @@ func TestCreateTeamsMessage(t *testing.T) {
 
 }
 
-func prettify(message teams.Message) string {
+func prettify(message Message) string {
 	s, err := json.MarshalIndent(message, "", "\t")
 
 	if err != nil {

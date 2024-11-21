@@ -1,9 +1,9 @@
 package verify
 
 import (
+	"github.com/nlnwa/hermetic/cmd/verify/confirm"
+	"github.com/nlnwa/hermetic/cmd/verify/reject"
 	"github.com/spf13/cobra"
-	"hermetic/cmd/verify/confirm"
-	"hermetic/cmd/verify/reject"
 )
 
 func NewCommand() *cobra.Command {
