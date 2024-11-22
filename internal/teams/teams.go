@@ -1,13 +1,16 @@
 package teams
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"log/slog"
+	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
-	"github.com/carlmjohnson/requests"
+	"github.com/nlnwa/hermetic/internal/dps"
 )
 
 const (
@@ -34,33 +37,28 @@ type Message struct {
 	Sections   []Section `json:"sections"`
 }
 
-func SendMessage(payload Message, webhookUrl string) error {
-	timeoutContext, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	slog.Info("Sending message to Teams")
-	bytes, err := json.Marshal(payload)
+func SendMessage(ctx context.Context, payload Message, webhookUrl string) error {
+	b, err := json.Marshal(payload)
 	if err != nil {
-		return fmt.Errorf("failed to marshal message, cause: `%w`", err)
+		return fmt.Errorf("failed to marshal teams message: %w", err)
 	}
-	err = requests.
-		URL(webhookUrl).
-		BodyBytes(bytes).
-		ContentType("text/plain").
-		Fetch(timeoutContext)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, webhookUrl, bytes.NewReader(b))
 	if err != nil {
-		return fmt.Errorf("failed to send message to teams, cause: `%w`", err)
+		return fmt.Errorf("failed to create request: %w", err)
 	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to send message to teams: %w", err)
+	}
+	defer resp.Body.Close()
+
 	time.Sleep(avoidMicrosoftTeamsWebhookRateLimit)
+
 	return nil
 }
 
-func CreateGeneralFailureMessage(failure error) Message {
-	facts := []Fact{
-		{
-			Name:  "Error",
-			Value: failure.Error(),
-		},
-	}
+func Error(err error) Message {
 	return Message{
 		Type:       "MessageCard",
 		Context:    "http://schema.org/extensions",
@@ -70,6 +68,89 @@ func CreateGeneralFailureMessage(failure error) Message {
 			{
 				ActivityTitle:    "System error",
 				ActivitySubtitle: "A Digital Preservation System (DPS) general failure",
+				ActivityImage:    "https://www.dictionary.com/e/wp-content/uploads/2018/03/thisisfine-1-300x300.jpg",
+				Facts: []Fact{
+					{
+						Name:  "Error",
+						Value: err.Error(),
+					},
+				},
+			},
+		},
+	}
+}
+
+func VerificationError(message *dps.KafkaResponse, rejectTopicName string, kafkaEndpoints []string) Message {
+	facts := []Fact{
+		{
+			Name:  "Kafka message offset",
+			Value: strconv.FormatInt(message.Offset, 10),
+		},
+		{
+			Name:  "Kafka message key",
+			Value: message.Key,
+		},
+		{
+			Name:  "Kafka topic",
+			Value: rejectTopicName,
+		},
+		{
+			Name:  "Kafka endpoints",
+			Value: strings.Join(kafkaEndpoints, ", "),
+		},
+		{
+			Name:  "Identifier",
+			Value: message.Response.Identifier,
+		},
+		{
+			Name:  "Urn",
+			Value: message.Response.Urn,
+		},
+		{
+			Name:  "Path",
+			Value: message.Response.Path,
+		},
+		{
+			Name:  "ContentType",
+			Value: message.Response.ContentType,
+		},
+		{
+			Name:  "ContentCategory",
+			Value: message.Response.ContentCategory,
+		},
+		{
+			Name:  "Date of submission",
+			Value: message.Response.Date,
+		},
+	}
+	for index, check := range message.Response.Checks {
+		facts = append(facts, Fact{
+			Name:  fmt.Sprintf("Check #%d status", index),
+			Value: check.Status,
+		})
+		facts = append(facts, Fact{
+			Name:  fmt.Sprintf("Check #%d message", index),
+			Value: check.Message,
+		})
+		facts = append(facts, Fact{
+			Name:  fmt.Sprintf("Check #%d reason", index),
+			Value: check.Reason,
+		})
+		facts = append(facts, Fact{
+			Name:  fmt.Sprintf("Check #%d file", index),
+			Value: check.File,
+		})
+	}
+
+	return Message{
+		Type:       "MessageCard",
+		Context:    "http://schema.org/extensions",
+		ThemeColor: "0076D7",
+		Summary:    "Verification error",
+		Sections: []Section{
+			{
+				ActivityTitle:    "Verification error",
+				ActivitySubtitle: "A Digital Preservation System (DPS) upload failed",
 				ActivityImage:    "https://www.dictionary.com/e/wp-content/uploads/2018/03/thisisfine-1-300x300.jpg",
 				Facts:            facts,
 			},

@@ -3,56 +3,78 @@ package reject
 import (
 	"context"
 	"fmt"
-	"github.com/segmentio/kafka-go"
-	"github.com/spf13/cobra"
-	"hermetic/internal/common_flags"
-	"hermetic/internal/teams"
-	rejectImplementation "hermetic/internal/verify/reject"
 	"log/slog"
 	"os"
 	"os/signal"
+
+	"github.com/nlnwa/hermetic/cmd/internal/cmdutil"
+	"github.com/nlnwa/hermetic/cmd/internal/flags"
+	"github.com/nlnwa/hermetic/internal/dps"
+	"github.com/nlnwa/hermetic/internal/teams"
+	"github.com/segmentio/kafka-go"
+	"github.com/spf13/cobra"
 )
 
+func addFlags(cmd *cobra.Command) {
+	flags.AddKafkaFlags(cmd)
+}
+
+type RejectOptions struct {
+	KafkaEndpoints              []string
+	KafkaTopic                  string
+	KafkaConsumerGroupID        string
+	TeamsWebhookNotificationUrl string
+}
+
+func toOptions() RejectOptions {
+	return RejectOptions{
+		KafkaEndpoints:              flags.GetKafkaEndpoints(),
+		KafkaTopic:                  flags.GetKafkaTopic(),
+		KafkaConsumerGroupID:        flags.GetKafkaConsumerGroupID(),
+		TeamsWebhookNotificationUrl: flags.GetTeamsWebhookNotificationUrl(),
+	}
+}
+
 func NewCommand() *cobra.Command {
-	command := &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "reject",
 		Short: "Continuously report all rejected data",
 		Args:  cobra.NoArgs,
-		RunE:  parseArgumentsAndReadRejectTopic,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cmdutil.HandleError(toOptions().Run())
+		},
 	}
-	rejectTopicFlagName := "reject-topic"
-	command.Flags().String(rejectTopicFlagName, "", "name of reject-topic")
-	if err := command.MarkFlagRequired(rejectTopicFlagName); err != nil {
-		panic(fmt.Sprintf("failed to mark flag %s as required, original error: '%s'", rejectTopicFlagName, err))
-	}
-	return command
+
+	addFlags(cmd)
+
+	return cmd
 }
 
-func parseArgumentsAndReadRejectTopic(cmd *cobra.Command, args []string) error {
-	rejectTopicName, err := cmd.Flags().GetString("reject-topic")
-	if err != nil {
-		return fmt.Errorf("failed to get reject-topic flag, cause: `%w`", err)
-	}
-
+func (o RejectOptions) Run() error {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
 	reader := kafka.NewReader(kafka.ReaderConfig{
-		Brokers: common_flags.KafkaEndpoints,
-		Topic:   rejectTopicName,
-		GroupID: "nettarkivet-hermetic-verify-reject",
+		Brokers: o.KafkaEndpoints,
+		Topic:   o.KafkaTopic,
+		GroupID: o.KafkaConsumerGroupID,
 	})
 
-	err = rejectImplementation.ReadRejectTopic(ctx, reader, common_flags.TeamsWebhookNotificationUrl)
-	if err != nil {
-		err = fmt.Errorf("verification error, cause: `%w`", err)
-		slog.Info("Sending error message to Teams")
-		teamsErrorMessage := teams.CreateGeneralFailureMessage(err)
-		if err := teams.SendMessage(teamsErrorMessage, common_flags.TeamsWebhookNotificationUrl); err != nil {
-			err = fmt.Errorf("failed to send error message to Teams, cause: `%w`", err)
-			slog.Error(err.Error())
+	for {
+		message, err := dps.NextMessage(ctx, reader, dps.IsWebArchiveOwned)
+		if err != nil {
+			return fmt.Errorf("failed to read next message from kafka: %w", err)
 		}
-		return err
+
+		slog.Info("Received reject message from DPS", "message", message.Response, "key", message.Key, "offset", message.Offset)
+
+		if len(o.TeamsWebhookNotificationUrl) == 0 {
+			continue
+		}
+
+		teamsMsg := teams.VerificationError(message, o.KafkaTopic, o.KafkaEndpoints)
+		if err := teams.SendMessage(ctx, teamsMsg, o.TeamsWebhookNotificationUrl); err != nil {
+			slog.Error("Failed to send message to teams", "error", err)
+		}
 	}
-	return err
 }

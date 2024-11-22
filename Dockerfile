@@ -1,20 +1,14 @@
-FROM golang:1.22 AS build-stage
+FROM golang:1.23 AS build
 
-WORKDIR /build
-
-COPY go.mod .
-COPY go.sum .
-
-RUN go mod download
+WORKDIR /go/src/app
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /hermetic
+RUN go mod download
+RUN CGO_ENABLED=0 go build
 
-FROM gcr.io/distroless/base-debian11 AS run-stage
 
-WORKDIR /run
+FROM gcr.io/distroless/base-debian12
 
-COPY --from=build-stage /hermetic .
-
-CMD ["./hermetic"]
+COPY --from=build /go/src/app/hermetic /hermetic
+CMD ["/hermetic"]

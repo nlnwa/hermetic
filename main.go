@@ -1,9 +1,10 @@
 package main
 
 import (
-	"hermetic/cmd"
 	"log/slog"
 	"os"
+
+	"github.com/nlnwa/hermetic/cmd"
 )
 
 func main() {
@@ -12,7 +13,7 @@ func main() {
 	slog.SetDefault(logger)
 
 	if err := cmd.NewRootCommand().Execute(); err != nil {
-		slog.Error("failed to execute command, got error:", err)
+		slog.Error(err.Error())
 		os.Exit(1)
 	}
 }

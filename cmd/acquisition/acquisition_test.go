@@ -1,4 +1,4 @@
-package acquisitionImplementation
+package acquisition
 
 import (
 	"os"
