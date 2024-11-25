@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"syscall"
 	"time"
@@ -32,6 +33,9 @@ const (
     ├── /kommuner_2023-20230611002730-0036-veidemann-contentwriter-568c6f8545-frvcm.warc.gz
     └── /checksum_transferred.md5
 ... etc`
+
+	excludeFlagName    string = "exclude"
+	excludeHelpMessage string = `comma separated list of regular expressions to match directories that should be excluded from preloading to cache`
 )
 
 func addFlags(cmd *cobra.Command) {
@@ -39,14 +43,27 @@ func addFlags(cmd *cobra.Command) {
 	if err := cmd.MarkFlagRequired(dirFlagName); err != nil {
 		panic(err)
 	}
+	cmd.Flags().StringSlice(excludeFlagName, nil, excludeHelpMessage)
 }
 
-func toOptions() SendOptions {
+func toOptions() (SendOptions, error) {
+	excludes := viper.GetStringSlice(excludeFlagName)
+
+	var exclude []*regexp.Regexp
+	for _, e := range excludes {
+		r, err := regexp.Compile(e)
+		if err != nil {
+			return SendOptions{}, fmt.Errorf("failed to compile regexp '%s': %w", e, err)
+		}
+		exclude = append(exclude, r)
+	}
+
 	return SendOptions{
 		KafkaEndpoints: flags.GetKafkaEndpoints(),
 		KafkaTopic:     flags.GetKafkaTopic(),
 		Dir:            viper.GetString(dirFlagName),
-	}
+		Exclude:        exclude,
+	}, nil
 }
 
 type SendOptions struct {
@@ -54,6 +71,7 @@ type SendOptions struct {
 	KafkaEndpoints  []string
 	TeamsWebhookUrl string
 	Dir             string
+	Exclude         []*regexp.Regexp
 }
 
 func NewCommand() *cobra.Command {
@@ -62,7 +80,11 @@ func NewCommand() *cobra.Command {
 		Short: "Continuously sends data to digital storage",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return cmdutil.HandleError(toOptions().Run())
+			opts, err := toOptions()
+			if err != nil {
+				return err
+			}
+			return cmdutil.HandleError(opts.Run())
 		},
 	}
 	addFlags(cmd)
@@ -99,6 +121,12 @@ func (o SendOptions) Run() error {
 		// Skip messages that are not from the root directory
 		if !strings.HasPrefix(msg.Path, o.Dir) {
 			return nil
+		}
+		// Skip messages that are excluded explicitly
+		for _, re := range o.Exclude {
+			if re.MatchString(msg.Path) {
+				return nil
+			}
 		}
 		if err := cache.Set(msg.Path, []byte("Sent")); err != nil {
 			return fmt.Errorf("failed to set '%s' in cache: %w", msg.Path, err)
