@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log/slog"
 	"net"
 	"time"
 
@@ -52,7 +51,7 @@ func ReadLatestMessages(ctx context.Context, kafkaEndpoints []string, kafkaTopic
 	if err != nil {
 		return fmt.Errorf("failed to get kafka partition leader: %w", err)
 	}
-	first, last, err := conn.ReadOffsets()
+	firstOffset, lastOffset, err := conn.ReadOffsets()
 	if err != nil {
 		return fmt.Errorf("failed to get first and last offset: %w", err)
 	}
@@ -70,31 +69,22 @@ func ReadLatestMessages(ctx context.Context, kafkaEndpoints []string, kafkaTopic
 	ctx, cancel := context.WithTimeout(ctx, readTimeout)
 	defer cancel()
 
-	for offset := first; offset < last; offset++ {
-		err := reader.SetOffset(offset)
-		if err != nil {
-			return fmt.Errorf("failed to set kafka reader offset '%d': %w", offset, err)
-		}
-
-		message, err := reader.ReadMessage(ctx)
+	err = reader.SetOffset(firstOffset)
+	if err != nil {
+		return fmt.Errorf("failed to set kafka reader offset '%d': %w", firstOffset, err)
+	}
+	for reader.Offset() < lastOffset {
+		kafkaMsg, err := reader.ReadMessage(ctx)
 		if err != nil {
 			return err
 		}
-
-		if message.Value == nil {
+		if kafkaMsg.Value == nil {
 			continue
 		}
-
 		var pkg Package
-
-		err = json.Unmarshal(message.Value, &pkg)
+		err = json.Unmarshal(kafkaMsg.Value, &pkg)
 		if err != nil {
-			syntaxError := new(json.SyntaxError)
-			if errors.As(err, &syntaxError) {
-				slog.Warn("Could not read message at offset, syntax error in message, skipping offset", "offset", offset)
-				continue
-			}
-			return fmt.Errorf("failed to unmarshal: %w", err)
+			return fmt.Errorf("failed to unmarshal kafka message: %w", err)
 		}
 		err = fn(&pkg)
 		if err != nil {
