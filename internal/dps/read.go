@@ -46,7 +46,7 @@ func getKafkaPartitionLeader(kafkaEndpoints []string, kafkaTopic string) (*kafka
 	return kafka.NewConn(connLeader, kafkaTopic, 0), nil
 }
 
-func ReadLatestMessages(ctx context.Context, kafkaEndpoints []string, kafkaTopic string, fn func(*Package) error) error {
+func ReadLatestMessages(ctx context.Context, kafkaEndpoints []string, kafkaTopic string, fn func(*Message) error) error {
 	conn, err := getKafkaPartitionLeader(kafkaEndpoints, kafkaTopic)
 	if err != nil {
 		return fmt.Errorf("failed to get kafka partition leader: %w", err)
@@ -81,12 +81,12 @@ func ReadLatestMessages(ctx context.Context, kafkaEndpoints []string, kafkaTopic
 		if kafkaMsg.Value == nil {
 			continue
 		}
-		var pkg Package
-		err = json.Unmarshal(kafkaMsg.Value, &pkg)
+		var msg Message
+		err = json.Unmarshal(kafkaMsg.Value, &msg)
 		if err != nil {
 			return fmt.Errorf("failed to unmarshal kafka message: %w", err)
 		}
-		err = fn(&pkg)
+		err = fn(&msg)
 		if err != nil {
 			return fmt.Errorf("failed to process message: %w", err)
 		}
@@ -94,45 +94,28 @@ func ReadLatestMessages(ctx context.Context, kafkaEndpoints []string, kafkaTopic
 	return nil
 }
 
-func IsWebArchiveMessage(message *Package) bool {
-	if message.ContentCategory == "nettarkiv" {
-		switch message.ContentType {
-		case ContentTypeWarc, ContentTypeAcquisition:
-			return true
-		default:
-			return false
-		}
-	}
-	return false
-}
-
-func NextMessage(ctx context.Context, reader *kafka.Reader, filter func(*Response) bool) (*KafkaResponse, error) {
+func NextMessage(ctx context.Context, reader *kafka.Reader, filter func(*Message) bool) (*KafkaMessage, error) {
 	for {
 		message, err := reader.ReadMessage(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read message: %w", err)
 		}
 
-		var response Response
+		var response Message
 
 		err = json.Unmarshal(message.Value, &response)
 		if err != nil {
-			syntaxError := new(json.SyntaxError)
-			if errors.As(err, &syntaxError) {
-				slog.Warn("Could not read message, skipping...", "offset", message.Offset, "value", string(message.Value), "error", err)
-				continue
-			}
-			return nil, fmt.Errorf("failed to unmarshal json: %w", err)
+			return nil, fmt.Errorf("failed to unmarshal kafka message: %w", err)
 		}
 
 		if !filter(&response) {
 			continue
 		}
 
-		return &KafkaResponse{
-			Offset:   message.Offset,
-			Key:      string(message.Key),
-			Response: response,
+		return &KafkaMessage{
+			Offset: message.Offset,
+			Key:    string(message.Key),
+			Value:  response,
 		}, nil
 	}
 }

@@ -78,18 +78,18 @@ func (o AcquisitionOptions) Run() error {
 
 	identifier := dataModel.ArchiveUnit.Name + "-" + dataModel.ArchiveUnit.Deposit.Date
 
-	parcel := dps.CreatePackage(o.Dir, identifier, contentType)
+	message := dps.CreateMessage(o.Dir, identifier, contentType)
 
 	expectedURN := "URN:NBN:no-nb_nettarkiv_" + dataModel.ArchiveUnit.Name + "-" + dataModel.ArchiveUnit.Deposit.Date
 
-	if parcel.Urn != expectedURN {
-		return fmt.Errorf("failed to create URN, expected %s, got %s", expectedURN, parcel.Urn)
+	if message.Urn != expectedURN {
+		return fmt.Errorf("failed to create URN, expected %s, got %s", expectedURN, message.Urn)
 	}
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	err = dps.Send(ctx, writer, parcel)
+	err = dps.Send(ctx, writer, message)
 	if err != nil {
 		return fmt.Errorf("failed to send message to kafka topic '%s': %w", o.KafkaTopic, err)
 	}

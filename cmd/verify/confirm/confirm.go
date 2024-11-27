@@ -78,20 +78,20 @@ func (o *ConfirmOptions) Run() error {
 			return fmt.Errorf("failed to read next message from kafka: %w", err)
 		}
 
-		slog.Info("Received confirm message from DPS", "message", message.Response, "key", message.Key, "offset", message.Offset)
+		slog.Info("Received confirm message from DPS", "message", message.Value, "key", message.Key, "offset", message.Offset)
 
 		if len(o.ReceiverUrl) == 0 {
 			continue
 		}
 
-		err = sendConfirmMessage(ctx, o.ReceiverUrl, message.Response)
+		err = sendConfirmMessage(ctx, o.ReceiverUrl, message.Value)
 		if err != nil {
 			return fmt.Errorf("failed to send confirm message: %w", err)
 		}
 	}
 }
 
-func sendConfirmMessage(ctx context.Context, baseUrl string, response dps.Response) error {
+func sendConfirmMessage(ctx context.Context, baseUrl string, response dps.Message) error {
 	url, err := url.JoinPath(baseUrl, response.Identifier)
 	if err != nil {
 		return fmt.Errorf("failed to join URL path: %w", err)

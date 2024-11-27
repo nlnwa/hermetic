@@ -13,13 +13,13 @@ func CreateUuid() ([]byte, error) {
 	return id.MarshalText()
 }
 
-func Send(ctx context.Context, w *kafka.Writer, parcel Package) error {
+func Send(ctx context.Context, w *kafka.Writer, msg Message) error {
 	key, err := CreateUuid()
 	if err != nil {
 		return err
 	}
 
-	value, err := json.Marshal(parcel)
+	value, err := json.Marshal(msg)
 	if err != nil {
 		return err
 	}
