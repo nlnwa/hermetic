@@ -10,10 +10,10 @@ import (
 )
 
 func TestCreateTeamsMessage(t *testing.T) {
-	kafkaResponse := &dps.KafkaResponse{
+	kafkaResponse := &dps.KafkaMessage{
 		Offset: 0,
 		Key:    "key",
-		Response: dps.Response{
+		Value: dps.Message{
 			Date:            "date",
 			Identifier:      "identifier",
 			Urn:             "urn",

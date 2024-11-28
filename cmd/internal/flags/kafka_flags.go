@@ -6,15 +6,14 @@ import (
 )
 
 const (
-	consumerGroupIDFlagName string = "consumer-group-id"
-	consumerGroupIDHelp     string = "consumer group ID for Kafka consumer"
-	defaultConsumerGroupID  string = "nettarkivet-hermetic-verify-confirm"
+	kafkaConsumerGroupIDFlagName string = "kafka-consumer-group-id"
+	kafkaConsumerGroupIDHelp     string = "consumer group ID for Kafka consumer"
 )
 
 func AddKafkaFlags(cmd *cobra.Command) {
-	cmd.Flags().String(consumerGroupIDFlagName, defaultConsumerGroupID, consumerGroupIDHelp)
+	cmd.Flags().String(kafkaConsumerGroupIDFlagName, "", kafkaConsumerGroupIDHelp)
 }
 
 func GetKafkaConsumerGroupID() string {
-	return viper.GetString(consumerGroupIDFlagName)
+	return viper.GetString(kafkaConsumerGroupIDFlagName)
 }

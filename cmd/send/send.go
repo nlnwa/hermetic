@@ -113,7 +113,7 @@ func (o SendOptions) Run() error {
 		return fmt.Errorf("failed to create cache: %w", err)
 	}
 
-	loadCache := func(msg *dps.Package) error {
+	loadCache := func(msg *dps.Message) error {
 		// Skip messages that are not web archive messages
 		if !dps.IsWebArchiveMessage(msg) {
 			return nil
@@ -160,9 +160,9 @@ func (o SendOptions) Run() error {
 
 			slog.Info("Processing directory", "path", path)
 
-			pkg := dps.CreatePackage(path, entry.Name(), dps.ContentTypeWarc)
+			msg := dps.CreateMessage(path, entry.Name(), dps.ContentTypeWarc)
 
-			if err := dps.Send(ctx, writer, pkg); err != nil {
+			if err := dps.Send(ctx, writer, msg); err != nil {
 				return fmt.Errorf("failed to send message to kafka topic '%s': %w", o.KafkaTopic, err)
 			}
 			if err := cache.Set(path, []byte("Sent")); err != nil {

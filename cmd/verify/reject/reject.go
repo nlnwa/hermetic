@@ -66,7 +66,7 @@ func (o RejectOptions) Run() error {
 			return fmt.Errorf("failed to read next message from kafka: %w", err)
 		}
 
-		slog.Info("Received reject message from DPS", "message", message.Response, "key", message.Key, "offset", message.Offset)
+		slog.Info("Received reject message from DPS", "message", message.Value, "key", message.Key, "offset", message.Offset)
 
 		if len(o.TeamsWebhookNotificationUrl) == 0 {
 			continue

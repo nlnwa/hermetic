@@ -13,39 +13,30 @@ type Check struct {
 	File    string
 }
 
-type Response struct {
-	Date            string
-	Identifier      string
-	Urn             string
-	Path            string
-	ContentType     string
-	ContentCategory string
-	Checks          []Check
+type Message struct {
+	Date            string  `json:"date"`
+	Identifier      string  `json:"identifier"`
+	Urn             string  `json:"urn"`
+	Path            string  `json:"path"`
+	ContentType     string  `json:"contentType"`
+	ContentCategory string  `json:"contentCategory"`
+	Checks          []Check `json:"checks,omitempty"`
 }
 
-type KafkaResponse struct {
-	Offset   int64
-	Key      string
-	Response Response
+type KafkaMessage struct {
+	Offset int64
+	Key    string
+	Value  Message
 }
 
-type Package struct {
-	Date            string `json:"date"`
-	ContentCategory string `json:"contentCategory"`
-	ContentType     string `json:"contentType"`
-	Identifier      string `json:"identifier"`
-	Urn             string `json:"urn"`
-	Path            string `json:"path"`
-}
-
-func CreatePackage(path string, payloadDirName string, contentType string) Package {
+func CreateMessage(path string, payloadDirName string, contentType string) Message {
 	date := time.Now().UTC().Format("2006-01-02T15:04:05.000")
 	contentCategory := "nettarkiv"
 	commonPart := "no-nb_" + contentCategory + "_" + payloadDirName
 	identifier := commonPart + "_" + uuid.New().String()
 	urn := "URN:NBN:" + commonPart
 
-	return Package{
+	return Message{
 		Date:            date,
 		ContentCategory: contentCategory,
 		ContentType:     contentType,
@@ -55,6 +46,19 @@ func CreatePackage(path string, payloadDirName string, contentType string) Packa
 	}
 }
 
-func IsWebArchiveOwned(message *Response) bool {
+func IsWebArchiveOwned(message *Message) bool {
 	return message.ContentCategory == "nettarkiv"
+}
+
+func IsWebArchiveMessage(message *Message) bool {
+	if !IsWebArchiveOwned(message) {
+		return false
+	}
+
+	switch message.ContentType {
+	case ContentTypeWarc, ContentTypeAcquisition:
+		return true
+	default:
+		return false
+	}
 }

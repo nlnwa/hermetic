@@ -80,7 +80,7 @@ func Error(err error) Message {
 	}
 }
 
-func VerificationError(message *dps.KafkaResponse, rejectTopicName string, kafkaEndpoints []string) Message {
+func VerificationError(message *dps.KafkaMessage, rejectTopicName string, kafkaEndpoints []string) Message {
 	facts := []Fact{
 		{
 			Name:  "Kafka message offset",
@@ -100,30 +100,30 @@ func VerificationError(message *dps.KafkaResponse, rejectTopicName string, kafka
 		},
 		{
 			Name:  "Identifier",
-			Value: message.Response.Identifier,
+			Value: message.Value.Identifier,
 		},
 		{
 			Name:  "Urn",
-			Value: message.Response.Urn,
+			Value: message.Value.Urn,
 		},
 		{
 			Name:  "Path",
-			Value: message.Response.Path,
+			Value: message.Value.Path,
 		},
 		{
 			Name:  "ContentType",
-			Value: message.Response.ContentType,
+			Value: message.Value.ContentType,
 		},
 		{
 			Name:  "ContentCategory",
-			Value: message.Response.ContentCategory,
+			Value: message.Value.ContentCategory,
 		},
 		{
 			Name:  "Date of submission",
-			Value: message.Response.Date,
+			Value: message.Value.Date,
 		},
 	}
-	for index, check := range message.Response.Checks {
+	for index, check := range message.Value.Checks {
 		facts = append(facts, Fact{
 			Name:  fmt.Sprintf("Check #%d status", index),
 			Value: check.Status,
